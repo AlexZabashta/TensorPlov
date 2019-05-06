@@ -2,9 +2,9 @@ package buffer;
 
 import org.apache.commons.lang3.tuple.Pair;
 
-import core.DifferentiableStructure;
+import core.DiffStruct;
 
-public abstract class Transform<TransformType extends Transform<TransformType>> implements DifferentiableStructure<Pair<double[], double[]>, Pair<double[], double[]>, double[]> {
+public abstract class Transform<TransformType extends Transform<TransformType>> implements DiffStruct<Pair<double[], double[]>, Pair<double[], double[]>, double[]> {
 
     public final Range input, hidden, output, weights, deltaInput, deltaOutput, deltaWeights;
 

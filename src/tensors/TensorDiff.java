@@ -2,9 +2,9 @@ package tensors;
 
 import org.apache.commons.lang3.tuple.Pair;
 
-import core.DifferentiableStructure;
+import core.DiffStruct;
 
-public class TensorDiff<M> implements DifferentiableStructure<double[], M, double[]> {
+public class TensorDiff<M> implements DiffStruct<double[], M, double[]> {
 
     final int[] inputShape;
     final int[] outputShape;

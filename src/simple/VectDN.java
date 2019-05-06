@@ -1,9 +1,9 @@
 package simple;
 import org.apache.commons.lang3.tuple.Pair;
 
-import core.DifferentiableStructure;
+import core.DiffStruct;
 
-public abstract class VectDN<M> implements DifferentiableStructure<Pair<double[], double[]>, M, double[]> {
+public abstract class VectDN<M> implements DiffStruct<Pair<double[], double[]>, M, double[]> {
 
     final int inputSize, outputSize;
 
