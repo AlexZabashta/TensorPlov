@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import scheme.ApplyJavaFunction;
+import scheme.ApplyFunction;
 import scheme.Context;
 import scheme.Multiplication;
 import scheme.Node;
@@ -28,7 +28,7 @@ public class Compiler {
         return new SeqVectorTransform(xSize, wSize, ySize, fSize, bSize, transforms.toArray(new VectorTransform[0]));
     }
 
-    static void compileAJF(List<VectorTransform> transforms, ApplyJavaFunction node, Map<Node, Variable> f, Map<Node, Variable> b) {
+    static void compileAJF(List<VectorTransform> transforms, ApplyFunction node, Map<Node, Variable> f, Map<Node, Variable> b) {
         Variable varX = f.get(node.subNode);
         Variable varY = f.get(node);
         Variable varDX = b.get(node.subNode);
@@ -43,11 +43,12 @@ public class Compiler {
             @Override
             public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
                 double[] sx = selectX.select(x, w, y, dx, dw, dy, f, b);
+                double[] sy = selectY.select(x, w, y, dx, dw, dy, f, b);
                 double[] sdx = selectDX.select(x, w, y, dx, dw, dy, f, b);
                 double[] sdy = selectDY.select(x, w, y, dx, dw, dy, f, b);
 
                 for (int i = 0; i < node.dim; i++) {
-                    sdx[i + varDX.from] += node.df.applyAsDouble(sx[i + varX.from]) * sdy[i + varDY.from];
+                    sdx[i + varDX.from] += node.function.derivative(sx[i + varX.from], sy[i + varY.from]) * sdy[i + varDY.from];
                 }
             }
 
@@ -56,7 +57,7 @@ public class Compiler {
                 double[] sx = selectX.select(x, w, y, null, null, null, f, null);
                 double[] sy = selectY.select(x, w, y, null, null, null, f, null);
                 for (int i = 0; i < node.dim; i++) {
-                    sy[i + varY.from] += node.f.applyAsDouble(sx[i + varX.from]);
+                    sy[i + varY.from] += node.function.execute(sx[i + varX.from]);
                 }
             }
         });
@@ -121,8 +122,8 @@ public class Compiler {
             return;
         }
 
-        if (node instanceof ApplyJavaFunction) {
-            compileAJF(transforms, (ApplyJavaFunction) node, f, b);
+        if (node instanceof ApplyFunction) {
+            compileAJF(transforms, (ApplyFunction) node, f, b);
             return;
         }
 
