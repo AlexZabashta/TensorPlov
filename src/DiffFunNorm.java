@@ -1,12 +1,15 @@
-import  static java.lang.Math.*;
+import static java.lang.Math.*;
 import tojava.VectorDiffStruct;
-public class DiffFun extends VectorDiffStruct {
-    public DiffFun() {
+
+public class DiffFunNorm extends VectorDiffStruct {
+    public DiffFunNorm() {
         super(784, 153831, 10, 1704, 1704);
     }
+
     @Override
     public void init(double[] w) {
     }
+
     @Override
     public void forward(double[] x, double[] w, double[] y, double[] f) {
         {
@@ -16,9 +19,9 @@ public class DiffFun extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 784; j++)
-            for (int k = 0; k < 183; k++)
-                f[i * 183 + k + 784] += f[i * 784 + j + 0] * w[j * 183 + k + 1568];
+                for (int j = 0; j < 784; j++)
+                    for (int k = 0; k < 183; k++)
+                        f[i * 183 + k + 784] += f[i * 784 + j + 0] * w[j * 183 + k + 1568];
         }
         {
             int ap = 784, bp = 145040;
@@ -38,9 +41,9 @@ public class DiffFun extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 183; j++)
-            for (int k = 0; k < 42; k++)
-                f[i * 42 + k + 1516] += f[i * 183 + j + 1333] * w[j * 42 + k + 145589];
+                for (int j = 0; j < 183; j++)
+                    for (int k = 0; k < 42; k++)
+                        f[i * 42 + k + 1516] += f[i * 183 + j + 1333] * w[j * 42 + k + 145589];
         }
         {
             int ap = 1516, bp = 153275;
@@ -60,9 +63,9 @@ public class DiffFun extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 42; j++)
-            for (int k = 0; k < 10; k++)
-                f[i * 10 + k + 1684] += f[i * 42 + j + 1642] * w[j * 10 + k + 153401];
+                for (int j = 0; j < 42; j++)
+                    for (int k = 0; k < 10; k++)
+                        f[i * 10 + k + 1684] += f[i * 42 + j + 1642] * w[j * 10 + k + 153401];
         }
         {
             int ap = 1684, bp = 153821;
@@ -76,6 +79,7 @@ public class DiffFun extends VectorDiffStruct {
             }
         }
     }
+
     @Override
     public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
         {
@@ -93,24 +97,24 @@ public class DiffFun extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 42; j++)
-            for (int k = 0; k < 10; k++) {
-                b[i * 42 + j + 20] += b[i * 10 + k + 10] * w[j * 10 + k + 153401];
-                dw[j * 10 + k + 153401] += f[i * 42 + j + 1642] * b[i * 10 + k + 10];
-            }
+                for (int j = 0; j < 42; j++)
+                    for (int k = 0; k < 10; k++) {
+                        b[i * 42 + j + 20] += b[i * 10 + k + 10] * w[j * 10 + k + 153401];
+                        dw[j * 10 + k + 153401] += f[i * 42 + j + 1642] * b[i * 10 + k + 10];
+                    }
         }
         {
             double sum = 0.0000001;
             for (int i = 20; i < 62; i++)
-                 sum += b[i] * b[i];
-            double inv = 1 / sqrt(sum);
+                sum += b[i] * b[i];
+            double inv = 1 / sum;
             int xp = 1600, mp = 153317, sp = 153359;
             int dxp = 62, dmp = 153317, dsp = 153359, dyp = 20;
             for (int yp = 1642; yp < 1684; yp++) {
                 double sq = f[yp] * f[yp];
-                dw[dsp++] += 0.00001 * (sq * (sq - 1));
-                dw[dmp++] += 0.00001 * (w[mp++] - f[xp++]);
-                b[dxp++] += b[dyp++] * exp(w[sp++]) ;
+                dw[dsp++] += sq * (sq - 1);
+                dw[dmp++] += f[xp++] - w[mp++];
+                b[dxp++] += b[dyp++] * exp(w[sp++]) * inv;
             }
         }
         {
@@ -128,24 +132,24 @@ public class DiffFun extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 183; j++)
-            for (int k = 0; k < 42; k++) {
-                b[i * 183 + j + 188] += b[i * 42 + k + 146] * w[j * 42 + k + 145589];
-                dw[j * 42 + k + 145589] += f[i * 183 + j + 1333] * b[i * 42 + k + 146];
-            }
+                for (int j = 0; j < 183; j++)
+                    for (int k = 0; k < 42; k++) {
+                        b[i * 183 + j + 188] += b[i * 42 + k + 146] * w[j * 42 + k + 145589];
+                        dw[j * 42 + k + 145589] += f[i * 183 + j + 1333] * b[i * 42 + k + 146];
+                    }
         }
         {
             double sum = 0.0000001;
             for (int i = 188; i < 371; i++)
-                 sum += b[i] * b[i];
-            double inv = 1 / sqrt(sum);
+                sum += b[i] * b[i];
+            double inv = 1 / sum;
             int xp = 1150, mp = 145223, sp = 145406;
             int dxp = 371, dmp = 145223, dsp = 145406, dyp = 188;
             for (int yp = 1333; yp < 1516; yp++) {
                 double sq = f[yp] * f[yp];
-                dw[dsp++] += 0.00001 * (sq * (sq - 1));
-                dw[dmp++] += 0.00001 * (w[mp++] - f[xp++]);
-                b[dxp++] += b[dyp++] * exp(w[sp++]) ;
+                dw[dsp++] += sq * (sq - 1);
+                dw[dmp++] += f[xp++] - w[mp++];
+                b[dxp++] += b[dyp++] * exp(w[sp++]) * inv;
             }
         }
         {
@@ -163,24 +167,24 @@ public class DiffFun extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 784; j++)
-            for (int k = 0; k < 183; k++) {
-                b[i * 784 + j + 920] += b[i * 183 + k + 737] * w[j * 183 + k + 1568];
-                dw[j * 183 + k + 1568] += f[i * 784 + j + 0] * b[i * 183 + k + 737];
-            }
+                for (int j = 0; j < 784; j++)
+                    for (int k = 0; k < 183; k++) {
+                        b[i * 784 + j + 920] += b[i * 183 + k + 737] * w[j * 183 + k + 1568];
+                        dw[j * 183 + k + 1568] += f[i * 784 + j + 0] * b[i * 183 + k + 737];
+                    }
         }
         {
             double sum = 0.0000001;
             for (int i = 920; i < 1704; i++)
-                 sum += b[i] * b[i];
-            double inv = 1 / sqrt(sum);
+                sum += b[i] * b[i];
+            double inv = 1 / sum;
             int xp = 0, mp = 0, sp = 784;
             int dxp = 0, dmp = 0, dsp = 784, dyp = 920;
             for (int yp = 0; yp < 784; yp++) {
                 double sq = f[yp] * f[yp];
-                dw[dsp++] += 0.00001 * (sq * (sq - 1));
-                dw[dmp++] += 0.00001 * (w[mp++] - x[xp++]);
-                dx[dxp++] += b[dyp++] * exp(w[sp++]) ;
+                dw[dsp++] += sq * (sq - 1);
+                dw[dmp++] += x[xp++] - w[mp++];
+                dx[dxp++] += b[dyp++] * exp(w[sp++]) * inv;
             }
         }
     }

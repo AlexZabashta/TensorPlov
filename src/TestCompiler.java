@@ -4,55 +4,43 @@ import java.util.List;
 
 import scheme.ApplyFunction;
 import scheme.Multiplication;
+import scheme.Node;
+import scheme.Normalization;
 import scheme.StringFunction;
 import scheme.Sum;
+import scheme.Tanh;
 import scheme.Variable;
 import tojava.CompilerToSrc;
 
 public class TestCompiler {
+
     public static void main(String[] args) throws FileNotFoundException {
-        int n = 3, m = 7, k = 5;
 
-        Variable w = new Variable("w", 0, n * m);
-        Variable x = new Variable("x", 0, m * k);
-        Variable b = new Variable("w", n * m, n * m + k * n);
+        int offset = 0;
 
-        Multiplication mul = new Multiplication(n, m, k, w, x);
+        int[] layers = { 784, 183, 42, 10 };
+        Node node = new Variable("x", 0, layers[0]);
+        StringFunction tanh = new Tanh();
 
-        // System.out.println(mul.outputLength() + " " + b.outputLength());
-        Sum sum = new Sum(mul, b);
+        for (int i = 1; i < layers.length; i++) {
+            Variable mu = new Variable("w", offset, offset += layers[i - 1]);
+            Variable sigma = new Variable("w", offset, offset += layers[i - 1]);
 
-        ApplyFunction act = new ApplyFunction(sum, new StringFunction() {
+            node = new Normalization(node, mu, sigma);
 
-            @Override
-            public void imprt(List<String> list) {
-                list.add(" static java.lang.Math.*");
-            }
+            Variable w = new Variable("w", offset, offset += layers[i - 1] * layers[i]);
+            Multiplication mul = new Multiplication(1, layers[i - 1], layers[i], node, w);
+            Variable b = new Variable("w", offset, offset += layers[i]);
 
-            @Override
-            public String forward(String x) {
-                return "tanh(" + x + ")";
-            }
+            Sum sum = new Sum(mul, b);
+            ApplyFunction act = new ApplyFunction(sum, tanh);
 
-            @Override
-            public double execute(double x) {
-                return Math.tan(x);
-            }
-
-            @Override
-            public double derivative(double x, double y) {
-                return 1 - y * y;
-            }
-
-            @Override
-            public String backward(String x, String y) {
-                return "(1 - " + y + " * " + y + ")";
-            }
-        });
+            node = act;
+        }
 
         String name = "DiffFun";
 
-        List<String> programm = CompilerToSrc.compile(null, name, act.preCompile());
+        List<String> programm = CompilerToSrc.compile(null, name, node.preCompile());
 
         try (PrintWriter writer = new PrintWriter(name + ".java")) {
             for (String line : programm) {
