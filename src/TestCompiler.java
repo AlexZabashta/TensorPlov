@@ -5,11 +5,13 @@ import java.util.List;
 import scheme.ApplyFunction;
 import scheme.Multiplication;
 import scheme.Node;
-import scheme.Normalization;
+import scheme.UnitDerivative;
+import scheme.UnitStd;
 import scheme.StringFunction;
 import scheme.Sum;
 import scheme.Tanh;
 import scheme.Variable;
+import scheme.ZeroMean;
 import tojava.CompilerToSrc;
 
 public class TestCompiler {
@@ -23,10 +25,14 @@ public class TestCompiler {
         StringFunction tanh = new Tanh();
 
         for (int i = 1; i < layers.length; i++) {
-            Variable mu = new Variable("w", offset, offset += layers[i - 1]);
-            Variable sigma = new Variable("w", offset, offset += layers[i - 1]);
 
-            node = new Normalization(node, mu, sigma);
+            Variable mu = new Variable("w", offset, offset += layers[i - 1]);
+            node = new ZeroMean(node, mu, 0.01);
+
+            Variable sigma = new Variable("w", offset, offset += layers[i - 1]);
+            node = new UnitStd(node, sigma, 0.01);
+
+            node = new UnitDerivative(node);
 
             Variable w = new Variable("w", offset, offset += layers[i - 1] * layers[i]);
             Multiplication mul = new Multiplication(1, layers[i - 1], layers[i], node, w);

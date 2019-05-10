@@ -2,7 +2,6 @@ package tojava;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -10,9 +9,11 @@ import scheme.ApplyFunction;
 import scheme.Context;
 import scheme.Multiplication;
 import scheme.Node;
-import scheme.Normalization;
 import scheme.Sum;
+import scheme.UnitDerivative;
+import scheme.UnitStd;
 import scheme.Variable;
+import scheme.ZeroMean;
 
 public class CompilerToSrc {
 
@@ -119,45 +120,93 @@ public class CompilerToSrc {
             return compileSUM((Sum) node, context);
         }
 
-        if (node instanceof Normalization) {
-            return compileNorm((Normalization) node, context);
+        if (node instanceof UnitDerivative) {
+            return compileUnitDer((UnitDerivative) node, context);
+        }
+
+        if (node instanceof UnitStd) {
+            return compileUnitStd((UnitStd) node, context);
+        }
+
+        if (node instanceof ZeroMean) {
+            return compileZeroMean((ZeroMean) node, context);
         }
 
         throw new UnsupportedOperationException("Can't compile " + node.getClass().getSimpleName());
     }
 
-    private static Program compileNorm(Normalization node, Context context) {
-        Variable m = context.f.get(node.offset);
+    private static Program compileUnitStd(UnitStd node, Context context) {
         Variable s = context.f.get(node.scale);
         Variable x = context.f.get(node.subNode);
         Variable y = context.f.get(node);
 
-        Variable dm = context.b.get(node.offset);
         Variable ds = context.b.get(node.scale);
         Variable dx = context.b.get(node.subNode);
         Variable dy = context.b.get(node);
 
         Program program = new Program();
 
-        program.frwrd.add("int xp = " + x.from + ", mp = " + m.from + ", sp = " + s.from + ";");
+        program.frwrd.add("int xp = " + x.from + ", sp = " + s.from + ";");
         program.frwrd.add("for (int yp = " + y.from + "; yp < " + y.to + "; yp++)");
-        program.frwrd.add(TAB + y.base + "[yp] += (" + x.base + "[xp++] - " + m.base + "[mp++]) * exp(" + s.base + "[sp++]);");
+        program.frwrd.add(TAB + y.base + "[yp] += " + x.base + "[xp++] * exp(" + s.base + "[sp++]);");
+
+        program.bkwrd.add("int sp = " + s.from + ", dxp = " + dx.from + ", dsp = " + ds.from + ", dyp = " + dy.from + ";");
+        program.bkwrd.add("for (int yp = " + y.from + "; yp < " + y.to + "; yp++) {");
+
+        program.bkwrd.add(TAB + "double sq = " + y.base + "[yp] * " + y.base + "[yp];");
+        program.bkwrd.add(TAB + ds.base + "[dsp++] += " + node.derivativeFactor + " * (sq * (sq - 1));");
+        program.bkwrd.add(TAB + dx.base + "[dxp++] += " + dy.base + "[dyp++] * exp(" + s.base + "[sp++]);");
+
+        program.bkwrd.add("}");
+
+        return program;
+    }
+
+    private static Program compileZeroMean(ZeroMean node, Context context) {
+        Variable m = context.f.get(node.offset);
+        Variable x = context.f.get(node.subNode);
+        Variable y = context.f.get(node);
+
+        Variable dm = context.b.get(node.offset);
+        Variable dx = context.b.get(node.subNode);
+        Variable dy = context.b.get(node);
+
+        Program program = new Program();
+
+        program.frwrd.add("int xp = " + x.from + ", mp = " + m.from + ";");
+        program.frwrd.add("for (int yp = " + y.from + "; yp < " + y.to + "; yp++)");
+        program.frwrd.add(TAB + y.base + "[yp] += (" + x.base + "[xp++] - " + m.base + "[mp++]);");
+
+        program.bkwrd.add("int xp = " + x.from + ", mp = " + m.from + ", dmp = " + dm.from + ", dyp = " + dy.from + ";");
+        program.bkwrd.add("for (int dxp = " + dx.from + "; dxp < " + dx.to + "; dxp++) {");
+        program.bkwrd.add(TAB + dm.base + "[dmp++] += " + node.derivativeFactor + " * (" + m.base + "[mp++] - " + x.base + "[xp++]);");
+        program.bkwrd.add(TAB + dx.base + "[dxp] += " + dy.base + "[dyp++];");
+
+        program.bkwrd.add("}");
+
+        return program;
+    }
+
+    private static Program compileUnitDer(UnitDerivative node, Context context) {
+
+        Variable x = context.f.get(node.subNode);
+        Variable y = context.f.get(node);
+
+        Variable dx = context.b.get(node.subNode);
+        Variable dy = context.b.get(node);
+
+        Program program = new Program();
+
+        program.frwrd.add("for (int xp = " + x.from + ", yp = " + y.from + "; yp < " + y.to + "; yp++)");
+        program.frwrd.add(TAB + y.base + "[yp] += " + x.base + "[xp++];");
 
         program.bkwrd.add("double sum = 0.0000001;");
         program.bkwrd.add("for (int i = " + dy.from + "; i < " + dy.to + "; i++)");
         program.bkwrd.add(TAB + " sum += " + dy.base + "[i] * " + dy.base + "[i];");
         program.bkwrd.add("double inv = 1 / sqrt(sum);");
 
-        program.bkwrd.add("int xp = " + x.from + ", mp = " + m.from + ", sp = " + s.from + ";");
-        program.bkwrd.add("int dxp = " + dx.from + ", dmp = " + dm.from + ", dsp = " + ds.from + ", dyp = " + dy.from + ";");
-        program.bkwrd.add("for (int yp = " + y.from + "; yp < " + y.to + "; yp++) {");
-
-        program.bkwrd.add(TAB + "double sq = " + y.base + "[yp] * " + y.base + "[yp];");
-        program.bkwrd.add(TAB + ds.base + "[dsp++] += 0.00001 * (sq * (sq - 1));");
-        program.bkwrd.add(TAB + dm.base + "[dmp++] += 0.00001 * (" + m.base + "[mp++] - " + x.base + "[xp++]);");
-        program.bkwrd.add(TAB + dx.base + "[dxp++] += " + dy.base + "[dyp++] * exp(" + s.base + "[sp++]) * inv;");
-
-        program.bkwrd.add("}");
+        program.bkwrd.add("for (int dxp = " + dx.from + ", dyp = " + dy.from + "; dxp < " + dx.to + "; dxp++)");
+        program.bkwrd.add(TAB + dx.base + "[dxp] += " + dy.base + "[dyp++] * inv;");
 
         return program;
     }

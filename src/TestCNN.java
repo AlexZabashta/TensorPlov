@@ -20,7 +20,7 @@ public class TestCNN extends JFrame {
     private double[][] lm = new double[n][n];
     private double la = 1.0 / n;
 
-    final double alpha = 0.95;
+    final double alpha = 0;
 
     public void draw(int iter, int[][] cm) {
 
@@ -50,7 +50,7 @@ public class TestCNN extends JFrame {
         setTitle(state);
         System.out.println(state);
 
-        int s = 800 / n;
+        int s = (getHeight() - 100) / n;
         int m = s * n;
         BufferedImage image = new BufferedImage(m, m, BufferedImage.TYPE_INT_RGB);
 
@@ -95,8 +95,11 @@ public class TestCNN extends JFrame {
         @Override
         public void run() {
 
-            int size = 60000;
-            Digit[] data = new Digit[size];
+            int trainSize = 60000;
+            Digit[] train = new Digit[trainSize];
+
+            int testSize = 10000;
+            Digit[] test = new Digit[testSize];
 
             try {
                 byte[] rawValues = Files.readAllBytes(new File("mnist\\train-images.idx3-ubyte").toPath());
@@ -104,13 +107,30 @@ public class TestCNN extends JFrame {
                 int valuesPointer = 16;
                 int labelsPointer = 8;
 
-                for (int i = 0; i < size; i++) {
+                for (int i = 0; i < trainSize; i++) {
                     double[] values = new double[784];
                     for (int j = 0; j < values.length; j++) {
-                        values[j] = (rawValues[valuesPointer++] & 0xFF) * 1.0;
+                        values[j] = (rawValues[valuesPointer++] & 0xFF) / 255.0;
                     }
                     int label = rawLabels[labelsPointer++] & 0xFF;
-                    data[i] = new Digit(values, label);
+                    train[i] = new Digit(values, label);
+                }
+            } catch (IOException exception) {
+                throw new RuntimeException(exception);
+            }
+            try {
+                byte[] rawValues = Files.readAllBytes(new File("mnist\\t10k-images.idx3-ubyte").toPath());
+                byte[] rawLabels = Files.readAllBytes(new File("mnist\\t10k-labels.idx1-ubyte").toPath());
+                int valuesPointer = 16;
+                int labelsPointer = 8;
+
+                for (int i = 0; i < testSize; i++) {
+                    double[] values = new double[784];
+                    for (int j = 0; j < values.length; j++) {
+                        values[j] = (rawValues[valuesPointer++] & 0xFF) / 255.0;
+                    }
+                    int label = rawLabels[labelsPointer++] & 0xFF;
+                    test[i] = new Digit(values, label);
                 }
             } catch (IOException exception) {
                 throw new RuntimeException(exception);
@@ -127,23 +147,12 @@ public class TestCNN extends JFrame {
             }
 
             for (int iter = 1; iter <= 1000; iter++) {
-                int[][] cm = new int[n][n];
 
                 double[] dw = new double[net.wSize];
 
                 for (int cnt = 0; cnt < batch; cnt++) {
 
-//                    if (cnt % 10 == 11) {
-//                        double[] array = w.clone();
-//                        for (int i = 0; i < array.length; i++) {
-//                            array[i] = Math.abs(array[i]);
-//                        }
-//                        Arrays.sort(array);
-//                        System.out.println(Arrays.toString(Arrays.copyOfRange(array, array.length - 30, array.length)));
-//
-//                    }
-
-                    Digit digit = data[random.nextInt(data.length)];
+                    Digit digit = train[random.nextInt(train.length)];
 
                     int e = digit.label;
 
@@ -159,17 +168,9 @@ public class TestCNN extends JFrame {
 
                     net.forward(x, w, y, f);
 
-                    int r = random.nextInt(n);
-
                     for (int i = 0; i < n; i++) {
-
                         dy[i] = y[i] - ty[i];
-                        if (y[i] > y[r]) {
-                            r = i;
-                        }
                     }
-
-                    cm[e][r] += 1;
 
                     double[] b = new double[net.bSize];
                     double[] dx = new double[net.xSize];
@@ -180,6 +181,25 @@ public class TestCNN extends JFrame {
 
                 for (int i = 0; i < net.wSize; i++) {
                     w[i] -= lr * dw[i] / batch;
+                }
+
+                int[][] cm = new int[n][n];
+                for (Digit digit : test) {
+                    int e = digit.label;
+                    double[] x = digit.values;
+                    double[] f = new double[net.fSize];
+                    double[] y = new double[net.ySize];
+
+                    net.forward(x, w, y, f);
+
+                    int r = random.nextInt(n);
+
+                    for (int i = 0; i < n; i++) {
+                        if (y[i] > y[r]) {
+                            r = i;
+                        }
+                    }
+                    cm[e][r] += 1;
                 }
 
                 testImgs.draw(iter, cm);
