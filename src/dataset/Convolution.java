@@ -10,11 +10,14 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
     public class Memory {
         final Node root;
         final int rows, cols;
+        final int cntH, cntV;
 
-        Memory(Node root, int rows, int cols) {
+        Memory(Node root, int rows, int cols, int cntH, int cntV) {
             this.root = root;
             this.rows = rows;
             this.cols = cols;
+            this.cntH = cols;
+            this.cntV = cols;
         }
 
         void normalize(double[] array, double scale) {
@@ -28,12 +31,14 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
             double[] dh = new double[numHorzBoundVar];
             double[] dv = new double[numVertBoundVar];
 
-            int cnt = root.backward(dy, dx, dh, dv);
+            root.backward(dy, dx, dh, dv);
 
-            if (cnt > 0) {
-                double scale = 1.0 / cnt;
-                normalize(dh, scale);
-                normalize(dv, scale);
+            if (cntH > 0) {
+                normalize(dh, 1.0 / cntH);
+            }
+
+            if (cntV > 0) {
+                normalize(dv, 1.0 / cntV);
             }
 
             return Triple.of(dx, dh, dv);
@@ -48,7 +53,7 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
             this.values = values;
         }
 
-        abstract int backward(double[] dy, double[][][] dx, double[] sdh, double[] sdv);
+        abstract void backward(double[] dy, double[][][] dx, double[] sdh, double[] sdv);
 
     }
 
@@ -75,7 +80,7 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
         abstract double[] backward(double[] dy, double[] sdh, double[] sdv);
 
         @Override
-        int backward(double[] dy, double[][][] dInput, double[] sdh, double[] sdv) {
+        void backward(double[] dy, double[][][] dInput, double[] sdh, double[] sdv) {
             double[] dx = backward(dy, sdh, sdv);
 
             double[] da = new double[depth];
@@ -84,7 +89,8 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
             System.arraycopy(dx, 0, da, 0, depth);
             System.arraycopy(dx, depth, db, 0, depth);
 
-            return 1 + first.backward(da, dInput, sdh, sdv) + secnd.backward(db, dInput, sdh, sdv);
+            first.backward(da, dInput, sdh, sdv);
+            secnd.backward(db, dInput, sdh, sdv);
         }
 
     }
@@ -131,9 +137,8 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
         }
 
         @Override
-        int backward(double[] dy, double[][][] dx, double[] sdh, double[] sdv) {
+        void backward(double[] dy, double[][][] dx, double[] sdh, double[] sdv) {
             dx[row][col] = dy;
-            return 0;
         }
 
     }
@@ -190,6 +195,7 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
         }
 
         int curRows = rows, curCols = cols;
+        int cntH = 0, cntV = 0;
 
         while (curRows > 1 || curCols > 1) {
             double rowSim = Double.POSITIVE_INFINITY, colSim = Double.POSITIVE_INFINITY;
@@ -259,6 +265,7 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
                 for (int row = 0; row < curRows; row++) {
                     nodes[row][colA] = buildNode(true, horzBoundVar, nodes[row][colA], nodes[row][colB]);
                     nodes[row][colB] = nodes[row][curCols];
+                    ++cntH;
                 }
             } else {
                 --curRows;
@@ -266,12 +273,13 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
                 for (int col = 0; col < curCols; col++) {
                     nodes[rowA][col] = buildNode(false, vertBoundVar, nodes[rowA][col], nodes[rowB][col]);
                     nodes[rowB][col] = nodes[curRows][col];
+                    ++cntV;
                 }
             }
         }
 
         Node root = nodes[0][0];
-        return Pair.of(new Memory(root, rows, cols), root.values);
+        return Pair.of(new Memory(root, rows, cols, cntH, cntV), root.values);
     }
 
 }
