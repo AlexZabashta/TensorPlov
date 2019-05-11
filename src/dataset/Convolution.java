@@ -16,8 +16,8 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
             this.root = root;
             this.rows = rows;
             this.cols = cols;
-            this.cntH = cols;
-            this.cntV = cols;
+            this.cntH = cntH;
+            this.cntV = cntV;
         }
 
         void normalize(double[] array, double scale) {
