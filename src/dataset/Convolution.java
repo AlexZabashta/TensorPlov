@@ -80,7 +80,8 @@ public abstract class Convolution<H, V> implements DiffStruct<Triple<double[][][
             for (int i = 0; i < src.length; i++) {
                 sum += src[i] * src[i];
             }
-            double scale = weight() / Math.sqrt(sum);
+//            double scale = weight() / Math.sqrt(sum);
+            double scale = weight();
             for (int i = 0; i < src.length; i++) {
                 dst[i] += src[i] * scale;
             }
@@ -157,7 +158,6 @@ public abstract class Convolution<H, V> implements DiffStruct<Triple<double[][][
     public final VarDiffStruct<double[], V, double[]> vertFold;
 
     public Convolution(int depth, VarDiffStruct<double[], H, double[]> horzFold, VarDiffStruct<double[], V, double[]> vertFold) {
-        super();
         this.depth = depth;
         this.horzFold = horzFold;
         this.vertFold = vertFold;
@@ -182,15 +182,12 @@ public abstract class Convolution<H, V> implements DiffStruct<Triple<double[][][
         }
     }
 
-    abstract Pair<Memory, double[]> forward(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar);
-
     @Override
     public Pair<Memory, double[]> forward(Triple<double[][][], double[], double[]> input) {
-        double[][][] dataset = input.getLeft();
+        return forward(input.getLeft(), input.getMiddle(), input.getRight());
+    }
 
-        double[] horzBoundVar = input.getMiddle();
-        double[] vertBoundVar = input.getRight();
-
+    public Pair<Memory, double[]> forward(double[][][] dataset, double[] horzBoundVar, double[] vertBoundVar) {
         final int rows = dataset.length, cols = dataset[0].length;
 
         @SuppressWarnings("unchecked")
@@ -204,6 +201,8 @@ public abstract class Convolution<H, V> implements DiffStruct<Triple<double[][][
         return forward(rows, cols, nodes, horzBoundVar, vertBoundVar);
     }
 
+    abstract Pair<Memory, double[]> forward(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar);
+
     @SuppressWarnings("unchecked")
     @Override
     public Class<Triple<double[][][], double[], double[]>> inputClass() {
@@ -212,8 +211,8 @@ public abstract class Convolution<H, V> implements DiffStruct<Triple<double[][][
 
     @SuppressWarnings("unchecked")
     @Override
-    public Class<Convolution<H, V>.Memory> memoryClass() {
-        return (Class<Convolution<H, V>.Memory>) new Memory(null, 0, 0, 0, 0).getClass();
+    public Class<Memory> memoryClass() {
+        return (Class<Memory>) new Memory(null, 0, 0, 0, 0).getClass();
     }
 
 }

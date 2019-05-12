@@ -57,7 +57,7 @@ public class CompilerToSrc {
         }
 
         Set<String> imprt = new TreeSet<>();
-        imprt.add("tojava.VectorDiffStruct");
+        imprt.add("core.VectorDiffStruct");
         for (Program subProgram : programs) {
             imprt.addAll(subProgram.imprt);
         }
@@ -270,6 +270,23 @@ public class CompilerToSrc {
         Variable dc = context.b.get(node);
 
         Program program = new Program();
+
+        double scale = 1 / Math.sqrt(node.midDim);
+
+        if (a.base.equals("w") || b.base.equals("w")) {
+            program.imprt.add("java.util.Random");
+            program.initw.add("Random random = new Random();");
+        }
+
+        if (a.base.equals("w")) {
+            program.initw.add("for (int i = " + a.from + "; i < " + a.to + "; i++)");
+            program.initw.add(TAB + a.base + "[i] = " + scale + " * random.nextGaussian();");
+        }
+
+        if (b.base.equals("w")) {
+            program.initw.add("for (int i = " + b.from + "; i < " + b.to + "; i++)");
+            program.initw.add(TAB + b.base + "[i] = " + scale + " * random.nextGaussian();");
+        }
 
         program.frwrd.add("for (int i = 0; i < " + node.lftDim + "; i++)");
         program.frwrd.add("for (int j = 0; j < " + node.midDim + "; j++)");
