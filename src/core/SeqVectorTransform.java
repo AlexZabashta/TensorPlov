@@ -1,4 +1,4 @@
-package tojava;
+package core;
 
 import java.util.Objects;
 

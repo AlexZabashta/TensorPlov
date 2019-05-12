@@ -20,4 +20,16 @@ public class Deconvolution implements DiffStruct<double[], Deconvolution.Memory,
         return null;
     }
 
+    @Override
+    public Class<double[]> inputClass() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Class<Memory> memoryClass() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
 }

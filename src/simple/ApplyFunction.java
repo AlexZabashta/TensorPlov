@@ -1,5 +1,8 @@
 package simple;
+
 import java.util.function.DoubleUnaryOperator;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 public class ApplyFunction extends VectDN<double[]> {
     final DoubleUnaryOperator f, df;
@@ -29,6 +32,18 @@ public class ApplyFunction extends VectDN<double[]> {
         for (int i = 0; i < inputSize; i++) {
             dx[i] = dy[i] * df.applyAsDouble(x[i]);
         }
+    }
+
+    @Override
+    public Class<Pair<double[], double[]>> inputClass() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Class<double[]> memoryClass() {
+        // TODO Auto-generated method stub
+        return null;
     }
 
 }

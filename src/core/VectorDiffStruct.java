@@ -1,12 +1,8 @@
-package tojava;
+package core;
 
 import org.apache.commons.lang3.tuple.Pair;
 
-import core.DiffStruct;
-
-public abstract class VectorDiffStruct implements DiffStruct<Pair<double[], double[]>, VectorDiffStruct.Memory, double[]>, VectorTransform {
-
-    public final int xSize, wSize, ySize, fSize, bSize;
+public abstract class VectorDiffStruct implements VarDiffStruct<double[], VectorDiffStruct.Memory, double[]>, VectorTransform {
 
     public class Memory {
         final double[] x, w, y, f;
@@ -19,29 +15,14 @@ public abstract class VectorDiffStruct implements DiffStruct<Pair<double[], doub
         }
     }
 
+    public final int xSize, wSize, ySize, fSize, bSize;
+
     public VectorDiffStruct(int xSize, int wSize, int ySize, int fSize, int bSize) {
         this.xSize = xSize;
         this.wSize = wSize;
         this.ySize = ySize;
         this.fSize = fSize;
         this.bSize = bSize;
-    }
-
-    @Override
-    public Pair<Memory, double[]> forward(Pair<double[], double[]> input) {
-        double[] x = input.getLeft();
-        assert x.length == xSize;
-
-        double[] w = input.getRight();
-        assert w.length == wSize;
-
-        double[] y = new double[ySize];
-
-        double[] f = new double[fSize];
-
-        forward(x, w, y, f);
-
-        return Pair.of(new Memory(x, w, y, f), y);
     }
 
     @Override
@@ -65,6 +46,30 @@ public abstract class VectorDiffStruct implements DiffStruct<Pair<double[], doub
         backward(x, w, y, dx, dw, dy, f, b);
 
         return Pair.of(dx, dw);
+    }
+
+    @Override
+    public Pair<Memory, double[]> forward(double[] x, double[] w) {
+        assert x.length == xSize;
+        assert w.length == wSize;
+
+        double[] y = new double[ySize];
+
+        double[] f = new double[fSize];
+
+        forward(x, w, y, f);
+
+        return Pair.of(new Memory(x, w, y, f), y);
+    }
+
+    @Override
+    public Class<Memory> memoryClass() {
+        return Memory.class;
+    }
+
+    @Override
+    public int numBoundVars() {
+        return wSize;
     }
 
 }

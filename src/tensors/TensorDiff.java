@@ -42,4 +42,16 @@ public class TensorDiff<M> implements DiffStruct<double[], M, double[]> {
         return null;
     }
 
+    @Override
+    public Class<double[]> inputClass() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Class<M> memoryClass() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
 }

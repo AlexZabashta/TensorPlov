@@ -1,5 +1,7 @@
 package buffer;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 public class MultiplyByMatrix extends Transform<MultiplyByMatrix> {
 
     public MultiplyByMatrix(int inputLength, int outputLength) {
@@ -22,6 +24,18 @@ public class MultiplyByMatrix extends Transform<MultiplyByMatrix> {
     public void forward(double[] values, double[] weights) {
         // TODO Auto-generated method stub
 
+    }
+
+    @Override
+    public Class<Pair<double[], double[]>> inputClass() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Class<Pair<double[], double[]>> memoryClass() {
+        // TODO Auto-generated method stub
+        return null;
     }
 
 }

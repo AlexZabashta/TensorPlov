@@ -1,4 +1,4 @@
-package tojava;
+package core;
 
 public interface VectorTransform {
     public void forward(double[] x, double[] w, double[] y, double[] f);

@@ -1,5 +1,6 @@
 import  static java.lang.Math.*;
-import tojava.VectorDiffStruct;
+
+import core.VectorDiffStruct;
 public class DiffFunSimple extends VectorDiffStruct {
     public DiffFunSimple() {
         super(784, 151813, 10, 695, 695);

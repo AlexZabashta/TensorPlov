@@ -1,4 +1,5 @@
 package simple;
+
 import org.apache.commons.lang3.tuple.Pair;
 
 public class MultiplyByMatrix extends VectDN<Pair<double[], double[]>> {
@@ -37,5 +38,17 @@ public class MultiplyByMatrix extends VectDN<Pair<double[], double[]>> {
                 w[wid] += x[i] * dy[j];
             }
         }
+    }
+
+    @Override
+    public Class<Pair<double[], double[]>> inputClass() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Class<Pair<double[], double[]>> memoryClass() {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

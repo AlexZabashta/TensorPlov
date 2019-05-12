@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import core.SeqVectorTransform;
+import core.VectorDiffStruct;
+import core.VectorTransform;
 import scheme.ApplyFunction;
 import scheme.Context;
 import scheme.Multiplication;

@@ -1,4 +1,7 @@
 package simple;
+
+import org.apache.commons.lang3.tuple.Pair;
+
 public class VectorAddition extends VectDN<double[]> {
 
     public VectorAddition(int inputSize, int outSize) {
@@ -24,5 +27,17 @@ public class VectorAddition extends VectDN<double[]> {
             dx[i] = dy[i];
             dw[i] += x[i] * dy[i];
         }
+    }
+
+    @Override
+    public Class<Pair<double[], double[]>> inputClass() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Class<double[]> memoryClass() {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

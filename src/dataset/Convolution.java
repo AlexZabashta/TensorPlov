@@ -1,21 +1,21 @@
 package dataset;
 
 import java.lang.reflect.Array;
-import java.util.Arrays;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 
 import core.DiffStruct;
+import core.VarDiffStruct;
 
-public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double[], double[]>, Convolution<H, V>.Memory, double[]> {
+public abstract class Convolution<H, V> implements DiffStruct<Triple<double[][][], double[], double[]>, Convolution<H, V>.Memory, double[]> {
 
     public class Memory {
         final Node root;
         final int rows, cols;
-        final int normH, normV;
+        final double normH, normV;
 
-        Memory(Node root, int rows, int cols, int normH, int normV) {
+        Memory(Node root, int rows, int cols, double normH, double normV) {
             this.root = root;
             this.rows = rows;
             this.cols = cols;
@@ -31,8 +31,8 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
 
         Triple<double[][][], double[], double[]> backward(double[] dy) {
             double[][][] dx = new double[rows][cols][];
-            double[] dh = new double[numHorzBoundVar];
-            double[] dv = new double[numVertBoundVar];
+            double[] dh = new double[horzFold.numBoundVars()];
+            double[] dv = new double[vertFold.numBoundVars()];
 
             root.backward(dy, dx, dh, dv);
 
@@ -60,6 +60,10 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
 
         abstract void backward(double[] dy, double[][][] dx, double[] sdh, double[] sdv);
 
+        double weight() {
+            return level;
+        }
+
     }
 
     abstract class Fold extends Node {
@@ -71,12 +75,12 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
             this.secnd = secnd;
         }
 
-        void addWithNormalization(int weight, double[] src, double[] dst) {
+        void addWithWeightAndNormalization(double[] src, double[] dst) {
             double sum = 1e-9;
             for (int i = 0; i < src.length; i++) {
                 sum += src[i] * src[i];
             }
-            double scale = weight / Math.sqrt(sum);
+            double scale = weight() / Math.sqrt(sum);
             for (int i = 0; i < src.length; i++) {
                 dst[i] += src[i] * scale;
             }
@@ -111,7 +115,7 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
         @Override
         double[] backward(double[] dy, double[] sdh, double[] sdv) {
             Pair<double[], double[]> dxh = horzFold.backward(horzMem, dy);
-            addWithNormalization(level, sdh, dxh.getRight());
+            addWithWeightAndNormalization(sdh, dxh.getRight());
             return dxh.getLeft();
         }
     }
@@ -127,7 +131,7 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
         @Override
         double[] backward(double[] dy, double[] sdh, double[] sdv) {
             Pair<double[], double[]> dxv = vertFold.backward(vertMem, dy);
-            addWithNormalization(level, sdv, dxv.getRight());
+            addWithWeightAndNormalization(sdv, dxv.getRight());
             return dxv.getLeft();
         }
     }
@@ -148,18 +152,15 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
 
     }
 
-    public final int depth, numHorzBoundVar, numVertBoundVar;
-    public final boolean symmetric;
-    public final DiffStruct<Pair<double[], double[]>, H, double[]> horzFold;
-    public final DiffStruct<Pair<double[], double[]>, V, double[]> vertFold;
+    public final int depth;
+    public final VarDiffStruct<double[], H, double[]> horzFold;
+    public final VarDiffStruct<double[], V, double[]> vertFold;
 
-    public Convolution(boolean symmetric, int depth, DiffStruct<Pair<double[], double[]>, H, double[]> horzFold, int numHorzBoundVar, DiffStruct<Pair<double[], double[]>, V, double[]> vertFold, int numVertBoundVar) {
-        this.symmetric = symmetric;
+    public Convolution(int depth, VarDiffStruct<double[], H, double[]> horzFold, VarDiffStruct<double[], V, double[]> vertFold) {
+        super();
         this.depth = depth;
         this.horzFold = horzFold;
-        this.numHorzBoundVar = numHorzBoundVar;
         this.vertFold = vertFold;
-        this.numVertBoundVar = numVertBoundVar;
     }
 
     @Override
@@ -173,13 +174,15 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
         System.arraycopy(secnd.values, 0, x, depth, depth);
 
         if (horizontal) {
-            Pair<H, double[]> result = horzFold.forward(Pair.of(x, foldBoundVar));
+            Pair<H, double[]> result = horzFold.forward(x, foldBoundVar);
             return new HorzFold(first, secnd, result.getLeft(), result.getRight());
         } else {
-            Pair<V, double[]> result = vertFold.forward(Pair.of(x, foldBoundVar));
+            Pair<V, double[]> result = vertFold.forward(x, foldBoundVar);
             return new VertFold(first, secnd, result.getLeft(), result.getRight());
         }
     }
+
+    abstract Pair<Memory, double[]> forward(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar);
 
     @Override
     public Pair<Memory, double[]> forward(Triple<double[][][], double[], double[]> input) {
@@ -198,102 +201,19 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
                 nodes[row][col] = new DatasetCell(dataset[row][col], row, col);
             }
         }
+        return forward(rows, cols, nodes, horzBoundVar, vertBoundVar);
+    }
 
-        int curRows = rows, curCols = cols;
-        int normH = 0, normV = 0;
+    @SuppressWarnings("unchecked")
+    @Override
+    public Class<Triple<double[][][], double[], double[]>> inputClass() {
+        return (Class<Triple<double[][][], double[], double[]>>) Triple.of(null, null, null).getClass();
+    }
 
-        while (curRows > 1 || curCols > 1) {
-            double rowSim = Double.POSITIVE_INFINITY, colSim = Double.POSITIVE_INFINITY;
-            int rowA = 0, rowB = 1;
-            int colA = 0, colB = 1;
-
-            for (int rowU = 1; rowU < curRows; rowU++) {
-                for (int rowD = symmetric ? 0 : (rowU - 1); rowD < rowU; rowD++) {
-                    double sim = 0;
-                    double sumD = 0, sumU = 0;
-                    for (int col = 0; col < curCols; col++) {
-                        for (int i = 0; i < depth; i++) {
-                            double valD = (nodes[rowD][col]).values[i];
-                            double valU = (nodes[rowU][col]).values[i];
-
-                            sumD += valD;
-                            sumU += valU;
-                            double diff = valD - valU;
-                            sim += diff * diff;
-                        }
-                    }
-
-                    sim /= curCols;
-
-                    if (sim < rowSim) {
-                        rowSim = sim;
-                        rowA = rowD;
-                        rowB = rowU;
-
-                        if (symmetric && sumD > sumU) {
-                            rowA ^= rowB;
-                            rowB ^= rowA;
-                            rowA ^= rowB;
-                        }
-                    }
-                }
-            }
-
-            for (int colR = 1; colR < curCols; colR++) {
-                for (int colL = symmetric ? 0 : (colR - 1); colL < colR; colL++) {
-                    double sim = 0;
-                    double sumL = 0, sumR = 0;
-                    for (int row = 0; row < curRows; row++) {
-                        for (int i = 0; i < depth; i++) {
-                            double valL = (nodes[row][colL]).values[i];
-                            double valR = (nodes[row][colR]).values[i];
-
-                            sumL += valL;
-                            sumR += valR;
-                            double diff = valL - valR;
-                            sim += diff * diff;
-
-                        }
-                    }
-
-                    sim /= curRows;
-
-                    if (sim < colSim) {
-                        colSim = sim;
-                        colA = colL;
-                        colB = colR;
-
-                        if (symmetric && sumL > sumR) {
-                            colA ^= colB;
-                            colB ^= colA;
-                            colA ^= colB;
-                        }
-                    }
-                }
-            }
-
-            if (colSim < rowSim) {
-                --curCols;
-                for (int row = 0; row < curRows; row++) {
-                    Node node = buildNode(true, horzBoundVar, nodes[row][colA], nodes[row][colB]);
-                    nodes[row][colA] = node;
-                    nodes[row][colB] = nodes[row][curCols];
-                    normH += node.level;
-                }
-            } else {
-                --curRows;
-
-                for (int col = 0; col < curCols; col++) {
-                    Node node = buildNode(false, vertBoundVar, nodes[rowA][col], nodes[rowB][col]);
-                    nodes[rowA][col] = node;
-                    nodes[rowB][col] = nodes[curRows][col];
-                    normV += node.level;
-                }
-            }
-        }
-
-        Node root = nodes[0][0];
-        return Pair.of(new Memory(root, rows, cols, normH, normV), root.values);
+    @SuppressWarnings("unchecked")
+    @Override
+    public Class<Convolution<H, V>.Memory> memoryClass() {
+        return (Class<Convolution<H, V>.Memory>) new Memory(null, 0, 0, 0, 0).getClass();
     }
 
 }
