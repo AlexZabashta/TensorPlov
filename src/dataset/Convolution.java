@@ -10,14 +10,14 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
     public class Memory {
         final Node root;
         final int rows, cols;
-        final int cntH, cntV;
+        final int normH, normV;
 
-        Memory(Node root, int rows, int cols, int cntH, int cntV) {
+        Memory(Node root, int rows, int cols, int normH, int normV) {
             this.root = root;
             this.rows = rows;
             this.cols = cols;
-            this.cntH = cntH;
-            this.cntV = cntV;
+            this.normH = normH;
+            this.normV = normV;
         }
 
         void normalize(double[] array, double scale) {
@@ -33,12 +33,12 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
 
             root.backward(dy, dx, dh, dv);
 
-            if (cntH > 0) {
-                normalize(dh, 1.0 / cntH);
+            if (normH > 0) {
+                normalize(dh, 1.0 / normH);
             }
 
-            if (cntV > 0) {
-                normalize(dv, 1.0 / cntV);
+            if (normV > 0) {
+                normalize(dv, 1.0 / normV);
             }
 
             return Triple.of(dx, dh, dv);
@@ -48,8 +48,10 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
 
     abstract class Node {
         final double[] values;
+        final int level;
 
-        Node(double[] values) {
+        Node(int level, double[] values) {
+            this.level = level;
             this.values = values;
         }
 
@@ -61,17 +63,17 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
         final Node first, secnd;
 
         Fold(Node first, Node secnd, double[] values) {
-            super(values);
+            super(Math.max(first.level, secnd.level) + 1, values);
             this.first = first;
             this.secnd = secnd;
         }
 
-        void addWithNormalization(double[] src, double[] dst) {
-            double sum = 1e-6;
+        void addWithNormalization(int weight, double[] src, double[] dst) {
+            double sum = 1e-9;
             for (int i = 0; i < src.length; i++) {
                 sum += src[i] * src[i];
             }
-            double scale = 1 / Math.sqrt(sum);
+            double scale = weight / Math.sqrt(sum);
             for (int i = 0; i < src.length; i++) {
                 dst[i] += src[i] * scale;
             }
@@ -106,7 +108,7 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
         @Override
         double[] backward(double[] dy, double[] sdh, double[] sdv) {
             Pair<double[], double[]> dxh = horzFold.backward(horzMem, dy);
-            addWithNormalization(sdh, dxh.getRight());
+            addWithNormalization(level, sdh, dxh.getRight());
             return dxh.getLeft();
         }
     }
@@ -122,7 +124,7 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
         @Override
         double[] backward(double[] dy, double[] sdh, double[] sdv) {
             Pair<double[], double[]> dxv = vertFold.backward(vertMem, dy);
-            addWithNormalization(sdv, dxv.getRight());
+            addWithNormalization(level, sdv, dxv.getRight());
             return dxv.getLeft();
         }
     }
@@ -131,7 +133,7 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
         final int row, col;
 
         DatasetCell(double[] values, int row, int col) {
-            super(values);
+            super(1, values);
             this.row = row;
             this.col = col;
         }
@@ -185,8 +187,7 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
 
         final int rows = dataset.length, cols = dataset[0].length;
 
-        @SuppressWarnings("unchecked")
-        Node[][] nodes = (Node[][]) new Object[rows][cols];
+        Object[][] nodes = new Object[rows][cols];
 
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
@@ -195,7 +196,7 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
         }
 
         int curRows = rows, curCols = cols;
-        int cntH = 0, cntV = 0;
+        int normH = 0, normV = 0;
 
         while (curRows > 1 || curCols > 1) {
             double rowSim = Double.POSITIVE_INFINITY, colSim = Double.POSITIVE_INFINITY;
@@ -208,9 +209,12 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
                     double sumD = 0, sumU = 0;
                     for (int col = 0; col < curCols; col++) {
                         for (int i = 0; i < depth; i++) {
-                            sumD += nodes[rowD][col].values[i];
-                            sumU += nodes[rowU][col].values[i];
-                            double diff = nodes[rowD][col].values[i] - nodes[rowU][col].values[i];
+                            double valD = ((Node) nodes[rowD][col]).values[i];
+                            double valU = ((Node) nodes[rowU][col]).values[i];
+
+                            sumD += valD;
+                            sumU += valU;
+                            double diff = valD - valU;
                             sim += diff * diff;
                         }
                     }
@@ -237,10 +241,14 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
                     double sumL = 0, sumR = 0;
                     for (int row = 0; row < curRows; row++) {
                         for (int i = 0; i < depth; i++) {
-                            sumL += nodes[row][colL].values[i];
-                            sumR += nodes[row][colR].values[i];
-                            double diff = nodes[row][colL].values[i] - nodes[row][colR].values[i];
+                            double valL = ((Node) nodes[row][colL]).values[i];
+                            double valR = ((Node) nodes[row][colR]).values[i];
+
+                            sumL += valL;
+                            sumR += valR;
+                            double diff = valL - valR;
                             sim += diff * diff;
+
                         }
                     }
 
@@ -263,23 +271,25 @@ public class Convolution<H, V> implements DiffStruct<Triple<double[][][], double
             if (colSim < rowSim) {
                 --curCols;
                 for (int row = 0; row < curRows; row++) {
-                    nodes[row][colA] = buildNode(true, horzBoundVar, nodes[row][colA], nodes[row][colB]);
+                    Node node = buildNode(true, horzBoundVar, (Node) nodes[row][colA], (Node) nodes[row][colB]);
+                    nodes[row][colA] = node;
                     nodes[row][colB] = nodes[row][curCols];
-                    ++cntH;
+                    normH += node.level;
                 }
             } else {
                 --curRows;
 
                 for (int col = 0; col < curCols; col++) {
-                    nodes[rowA][col] = buildNode(false, vertBoundVar, nodes[rowA][col], nodes[rowB][col]);
+                    Node node = buildNode(false, vertBoundVar, (Node) nodes[rowA][col], (Node) nodes[rowB][col]);
+                    nodes[rowA][col] = node;
                     nodes[rowB][col] = nodes[curRows][col];
-                    ++cntV;
+                    normV += node.level;
                 }
             }
         }
 
-        Node root = nodes[0][0];
-        return Pair.of(new Memory(root, rows, cols, cntH, cntV), root.values);
+        Node root = (Node) nodes[0][0];
+        return Pair.of(new Memory(root, rows, cols, normH, normV), root.values);
     }
 
 }
