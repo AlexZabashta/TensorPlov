@@ -168,12 +168,12 @@ public class TestICN extends JFrame {
             hvFold.init(ver);
 
             int batch = 20;
-            double lr = 0.1;
+            double lr = 1;
             double gamma = 0.95;
 
             Random random = new Random();
 
-            for (int iter = 1; iter <= 1000; iter++) {
+            for (int iter = 1; iter <= 100000; iter++) {
                 int[][] cm = new int[n][n];
 
                 for (int cnt = 0; cnt < batch; cnt++) {
@@ -185,8 +185,8 @@ public class TestICN extends JFrame {
                     double[] x = digit.values;
 
                     double[] ty = new double[n];
-                    Arrays.fill(ty, -0.9999987654321);
-                    ty[e] *= -1;
+                    Arrays.fill(ty, -0.9);
+                    ty[e] = 0.9;
 
                     double[][][] obj = new double[28][28][9];
                     for (int row = 0; row < 28; row++) {
@@ -241,7 +241,24 @@ public class TestICN extends JFrame {
                         dec[i] -= lr * mdec[i];
                     }
 
-
+                    if (random.nextInt(100) == 0) {
+                        for (int i = 0; i < 20; i++) {
+                            System.out.printf(Locale.ENGLISH, "%7.3f ", enc[i * 70]);
+                        }
+                        System.out.println();
+                        for (int i = 0; i < 20; i++) {
+                            System.out.printf(Locale.ENGLISH, "%7.3f ", hor[i * 372]);
+                        }
+                        System.out.println();
+                        for (int i = 0; i < 20; i++) {
+                            System.out.printf(Locale.ENGLISH, "%7.3f ", ver[i * 372]);
+                        }
+                        System.out.println();
+                        for (int i = 0; i < 20; i++) {
+                            System.out.printf(Locale.ENGLISH, "%7.3f ", dec[i * 107]);
+                        }
+                        System.out.println();
+                    }
                     int r = random.nextInt(n);
 
                     for (int i = 0; i < n; i++) {

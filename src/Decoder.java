@@ -1,10 +1,12 @@
-import  static java.lang.Math.*;
+import static java.lang.Math.*;
 import core.VectorDiffStruct;
 import java.util.Random;
+
 public class Decoder extends VectorDiffStruct {
     public Decoder() {
         super(40, 2150, 10, 350, 350);
     }
+
     @Override
     public void init(double[] w) {
         {
@@ -23,12 +25,13 @@ public class Decoder extends VectorDiffStruct {
                 w[i] = 0.22360679774997896 * random.nextGaussian();
         }
     }
+
     @Override
     public void forward(double[] x, double[] w, double[] y, double[] f) {
         {
-            int xp = 0, mp = 0;
+            int xp = 0, sp = 0;
             for (int yp = 0; yp < 40; yp++)
-                f[yp] += (x[xp++] - w[mp++]);
+                f[yp] += x[xp++] * exp(w[sp++]);
         }
         {
             for (int xp = 0, yp = 40; yp < 80; yp++)
@@ -36,9 +39,9 @@ public class Decoder extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 40; j++)
-            for (int k = 0; k < 30; k++)
-                f[i * 30 + k + 80] += f[i * 40 + j + 40] * w[j * 30 + k + 40];
+                for (int j = 0; j < 40; j++)
+                    for (int k = 0; k < 30; k++)
+                        f[i * 30 + k + 80] += f[i * 40 + j + 40] * w[j * 30 + k + 40];
         }
         {
             int ap = 80, bp = 1240;
@@ -48,7 +51,7 @@ public class Decoder extends VectorDiffStruct {
         {
             int xp = 110, yp = 140;
             for (int i = 0; i < 30; i++, xp++) {
-                f[yp++] += tanh(f[xp]);
+                f[yp++] += max(0.001 * f[xp], f[xp]);
             }
         }
         {
@@ -62,9 +65,9 @@ public class Decoder extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 30; j++)
-            for (int k = 0; k < 20; k++)
-                f[i * 20 + k + 230] += f[i * 30 + j + 200] * w[j * 20 + k + 1300];
+                for (int j = 0; j < 30; j++)
+                    for (int k = 0; k < 20; k++)
+                        f[i * 20 + k + 230] += f[i * 30 + j + 200] * w[j * 20 + k + 1300];
         }
         {
             int ap = 230, bp = 1900;
@@ -74,7 +77,7 @@ public class Decoder extends VectorDiffStruct {
         {
             int xp = 250, yp = 270;
             for (int i = 0; i < 20; i++, xp++) {
-                f[yp++] += tanh(f[xp]);
+                f[yp++] += max(0.001 * f[xp], f[xp]);
             }
         }
         {
@@ -88,9 +91,9 @@ public class Decoder extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 20; j++)
-            for (int k = 0; k < 10; k++)
-                f[i * 10 + k + 330] += f[i * 20 + j + 310] * w[j * 10 + k + 1940];
+                for (int j = 0; j < 20; j++)
+                    for (int k = 0; k < 10; k++)
+                        f[i * 10 + k + 330] += f[i * 20 + j + 310] * w[j * 10 + k + 1940];
         }
         {
             int ap = 330, bp = 2140;
@@ -104,6 +107,7 @@ public class Decoder extends VectorDiffStruct {
             }
         }
     }
+
     @Override
     public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
         {
@@ -121,16 +125,16 @@ public class Decoder extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 20; j++)
-            for (int k = 0; k < 10; k++) {
-                b[i * 20 + j + 20] += b[i * 10 + k + 10] * w[j * 10 + k + 1940];
-                dw[j * 10 + k + 1940] += f[i * 20 + j + 310] * b[i * 10 + k + 10];
-            }
+                for (int j = 0; j < 20; j++)
+                    for (int k = 0; k < 10; k++) {
+                        b[i * 20 + j + 20] += b[i * 10 + k + 10] * w[j * 10 + k + 1940];
+                        dw[j * 10 + k + 1940] += f[i * 20 + j + 310] * b[i * 10 + k + 10];
+                    }
         }
         {
             double sum = 0.0000001;
             for (int i = 20; i < 40; i++)
-                 sum += b[i] * b[i];
+                sum += b[i] * b[i];
             double inv = 1 / sqrt(sum);
             for (int dxp = 40, dyp = 20; dxp < 60; dxp++)
                 b[dxp] += b[dyp++] * inv;
@@ -145,7 +149,7 @@ public class Decoder extends VectorDiffStruct {
         {
             int xp = 250, yp = 270, dxp = 80, dyp = 60;
             for (int i = 0; i < 20; i++, xp++, yp++) {
-                b[dxp++] += b[dyp++] * (1 - f[yp] * f[yp]);
+                b[dxp++] += b[dyp++] * ((f[xp] < 0) ? 0.001 : 1);
             }
         }
         {
@@ -157,16 +161,16 @@ public class Decoder extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 30; j++)
-            for (int k = 0; k < 20; k++) {
-                b[i * 30 + j + 120] += b[i * 20 + k + 100] * w[j * 20 + k + 1300];
-                dw[j * 20 + k + 1300] += f[i * 30 + j + 200] * b[i * 20 + k + 100];
-            }
+                for (int j = 0; j < 30; j++)
+                    for (int k = 0; k < 20; k++) {
+                        b[i * 30 + j + 120] += b[i * 20 + k + 100] * w[j * 20 + k + 1300];
+                        dw[j * 20 + k + 1300] += f[i * 30 + j + 200] * b[i * 20 + k + 100];
+                    }
         }
         {
             double sum = 0.0000001;
             for (int i = 120; i < 150; i++)
-                 sum += b[i] * b[i];
+                sum += b[i] * b[i];
             double inv = 1 / sqrt(sum);
             for (int dxp = 150, dyp = 120; dxp < 180; dxp++)
                 b[dxp] += b[dyp++] * inv;
@@ -181,7 +185,7 @@ public class Decoder extends VectorDiffStruct {
         {
             int xp = 110, yp = 140, dxp = 210, dyp = 180;
             for (int i = 0; i < 30; i++, xp++, yp++) {
-                b[dxp++] += b[dyp++] * (1 - f[yp] * f[yp]);
+                b[dxp++] += b[dyp++] * ((f[xp] < 0) ? 0.001 : 1);
             }
         }
         {
@@ -193,25 +197,26 @@ public class Decoder extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 40; j++)
-            for (int k = 0; k < 30; k++) {
-                b[i * 40 + j + 270] += b[i * 30 + k + 240] * w[j * 30 + k + 40];
-                dw[j * 30 + k + 40] += f[i * 40 + j + 40] * b[i * 30 + k + 240];
-            }
+                for (int j = 0; j < 40; j++)
+                    for (int k = 0; k < 30; k++) {
+                        b[i * 40 + j + 270] += b[i * 30 + k + 240] * w[j * 30 + k + 40];
+                        dw[j * 30 + k + 40] += f[i * 40 + j + 40] * b[i * 30 + k + 240];
+                    }
         }
         {
             double sum = 0.0000001;
             for (int i = 270; i < 310; i++)
-                 sum += b[i] * b[i];
+                sum += b[i] * b[i];
             double inv = 1 / sqrt(sum);
             for (int dxp = 310, dyp = 270; dxp < 350; dxp++)
                 b[dxp] += b[dyp++] * inv;
         }
         {
-            int xp = 0, mp = 0, dmp = 0, dyp = 310;
-            for (int dxp = 0; dxp < 40; dxp++) {
-                dw[dmp++] += 0.01 * (w[mp++] - x[xp++]);
-                dx[dxp] += b[dyp++];
+            int sp = 0, dxp = 0, dsp = 0, dyp = 310;
+            for (int yp = 0; yp < 40; yp++) {
+                double sq = f[yp] * f[yp];
+                dw[dsp++] += 0.01 * (sq * (sq - 1));
+                dx[dxp++] += b[dyp++] * exp(w[sp++]);
             }
         }
     }

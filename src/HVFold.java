@@ -21,9 +21,9 @@ public class HVFold extends VectorDiffStruct {
     @Override
     public void forward(double[] x, double[] w, double[] y, double[] f) {
         {
-            int xp = 0, mp = 0;
+            int xp = 0, sp = 0;
             for (int yp = 0; yp < 80; yp++)
-                f[yp] += (x[xp++] - w[mp++]);
+                f[yp] += x[xp++] * exp(w[sp++]);
         }
         {
             for (int xp = 0, yp = 80; yp < 160; yp++)
@@ -43,7 +43,7 @@ public class HVFold extends VectorDiffStruct {
         {
             int xp = 220, yp = 280;
             for (int i = 0; i < 60; i++, xp++) {
-                f[yp++] += tanh(f[xp]);
+                f[yp++] += max(0.001 * f[xp], f[xp]);
             }
         }
         {
@@ -114,7 +114,7 @@ public class HVFold extends VectorDiffStruct {
         {
             int xp = 220, yp = 280, dxp = 260, dyp = 200;
             for (int i = 0; i < 60; i++, xp++, yp++) {
-                b[dxp++] += b[dyp++] * (1 - f[yp] * f[yp]);
+                b[dxp++] += b[dyp++] * ((f[xp] < 0) ? 0.001 : 1);
             }
         }
         {
@@ -141,10 +141,11 @@ public class HVFold extends VectorDiffStruct {
                 b[dxp] += b[dyp++] * inv;
         }
         {
-            int xp = 0, mp = 0, dmp = 0, dyp = 460;
-            for (int dxp = 0; dxp < 80; dxp++) {
-                dw[dmp++] += 0.01 * (w[mp++] - x[xp++]);
-                dx[dxp] += b[dyp++];
+            int sp = 0, dxp = 0, dsp = 0, dyp = 460;
+            for (int yp = 0; yp < 80; yp++) {
+                double sq = f[yp] * f[yp];
+                dw[dsp++] += 0.01 * (sq * (sq - 1));
+                dx[dxp++] += b[dyp++] * exp(w[sp++]);
             }
         }
     }

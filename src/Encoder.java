@@ -1,12 +1,10 @@
-import static java.lang.Math.*;
+import  static java.lang.Math.*;
 import core.VectorDiffStruct;
 import java.util.Random;
-
 public class Encoder extends VectorDiffStruct {
     public Encoder() {
         super(9, 1426, 40, 233, 233);
     }
-
     @Override
     public void init(double[] w) {
         {
@@ -20,13 +18,12 @@ public class Encoder extends VectorDiffStruct {
                 w[i] = 0.19245008972987526 * random.nextGaussian();
         }
     }
-
     @Override
     public void forward(double[] x, double[] w, double[] y, double[] f) {
         {
-            int xp = 0, mp = 0;
+            int xp = 0, sp = 0;
             for (int yp = 0; yp < 9; yp++)
-                f[yp] += (x[xp++] - w[mp++]);
+                f[yp] += x[xp++] * exp(w[sp++]);
         }
         {
             for (int xp = 0, yp = 9; yp < 18; yp++)
@@ -34,9 +31,9 @@ public class Encoder extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-                for (int j = 0; j < 9; j++)
-                    for (int k = 0; k < 27; k++)
-                        f[i * 27 + k + 18] += f[i * 9 + j + 9] * w[j * 27 + k + 9];
+            for (int j = 0; j < 9; j++)
+            for (int k = 0; k < 27; k++)
+                f[i * 27 + k + 18] += f[i * 9 + j + 9] * w[j * 27 + k + 9];
         }
         {
             int ap = 18, bp = 252;
@@ -46,7 +43,7 @@ public class Encoder extends VectorDiffStruct {
         {
             int xp = 45, yp = 72;
             for (int i = 0; i < 27; i++, xp++) {
-                f[yp++] += tanh(f[xp]);
+                f[yp++] += max(0.001 * f[xp], f[xp]);
             }
         }
         {
@@ -60,9 +57,9 @@ public class Encoder extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-                for (int j = 0; j < 27; j++)
-                    for (int k = 0; k < 40; k++)
-                        f[i * 40 + k + 153] += f[i * 27 + j + 126] * w[j * 40 + k + 306];
+            for (int j = 0; j < 27; j++)
+            for (int k = 0; k < 40; k++)
+                f[i * 40 + k + 153] += f[i * 27 + j + 126] * w[j * 40 + k + 306];
         }
         {
             int ap = 153, bp = 1386;
@@ -76,7 +73,6 @@ public class Encoder extends VectorDiffStruct {
             }
         }
     }
-
     @Override
     public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
         {
@@ -94,16 +90,16 @@ public class Encoder extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-                for (int j = 0; j < 27; j++)
-                    for (int k = 0; k < 40; k++) {
-                        b[i * 27 + j + 80] += b[i * 40 + k + 40] * w[j * 40 + k + 306];
-                        dw[j * 40 + k + 306] += f[i * 27 + j + 126] * b[i * 40 + k + 40];
-                    }
+            for (int j = 0; j < 27; j++)
+            for (int k = 0; k < 40; k++) {
+                b[i * 27 + j + 80] += b[i * 40 + k + 40] * w[j * 40 + k + 306];
+                dw[j * 40 + k + 306] += f[i * 27 + j + 126] * b[i * 40 + k + 40];
+            }
         }
         {
             double sum = 0.0000001;
             for (int i = 80; i < 107; i++)
-                sum += b[i] * b[i];
+                 sum += b[i] * b[i];
             double inv = 1 / sqrt(sum);
             for (int dxp = 107, dyp = 80; dxp < 134; dxp++)
                 b[dxp] += b[dyp++] * inv;
@@ -118,7 +114,7 @@ public class Encoder extends VectorDiffStruct {
         {
             int xp = 45, yp = 72, dxp = 161, dyp = 134;
             for (int i = 0; i < 27; i++, xp++, yp++) {
-                b[dxp++] += b[dyp++] * (1 - f[yp] * f[yp]);
+                b[dxp++] += b[dyp++] * ((f[xp] < 0) ? 0.001 : 1);
             }
         }
         {
@@ -130,25 +126,26 @@ public class Encoder extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-                for (int j = 0; j < 9; j++)
-                    for (int k = 0; k < 27; k++) {
-                        b[i * 9 + j + 215] += b[i * 27 + k + 188] * w[j * 27 + k + 9];
-                        dw[j * 27 + k + 9] += f[i * 9 + j + 9] * b[i * 27 + k + 188];
-                    }
+            for (int j = 0; j < 9; j++)
+            for (int k = 0; k < 27; k++) {
+                b[i * 9 + j + 215] += b[i * 27 + k + 188] * w[j * 27 + k + 9];
+                dw[j * 27 + k + 9] += f[i * 9 + j + 9] * b[i * 27 + k + 188];
+            }
         }
         {
             double sum = 0.0000001;
             for (int i = 215; i < 224; i++)
-                sum += b[i] * b[i];
+                 sum += b[i] * b[i];
             double inv = 1 / sqrt(sum);
             for (int dxp = 224, dyp = 215; dxp < 233; dxp++)
                 b[dxp] += b[dyp++] * inv;
         }
         {
-            int xp = 0, mp = 0, dmp = 0, dyp = 224;
-            for (int dxp = 0; dxp < 9; dxp++) {
-                dw[dmp++] += 0.01 * (w[mp++] - x[xp++]);
-                dx[dxp] += b[dyp++];
+            int sp = 0, dxp = 0, dsp = 0, dyp = 224;
+            for (int yp = 0; yp < 9; yp++) {
+                double sq = f[yp] * f[yp];
+                dw[dsp++] += 0.01 * (sq * (sq - 1));
+                dx[dxp++] += b[dyp++] * exp(w[sp++]);
             }
         }
     }
