@@ -1,3 +1,4 @@
+package test.mnist;
 
 import java.awt.Color;
 import java.awt.event.WindowEvent;

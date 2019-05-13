@@ -1,22 +1,23 @@
 package dataset;
 
-import java.lang.reflect.Array;
+import java.util.function.Function;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 
-import core.DiffStruct;
+import core.DiffFunct;
+import core.Result;
 import core.VarDiffStruct;
 
-public class FullConvolution<E, H, V, D> implements DiffStruct<FullConvolution<E, H, V, D>.Input, FullConvolution<E, H, V, D>.Memory, double[]> {
+public class FullConvolution implements DiffFunct<FullConvolution.Input, double[]> {
 
     public final int inputDepth;
-    public final VarDiffStruct<double[], E, double[]> encoder;
-    public final Convolution<H, V> convolution;
-    public final VarDiffStruct<double[], D, double[]> decoder;
+    public final VarDiffStruct<double[], double[]> encoder;
+    public final Convolution convolution;
+    public final VarDiffStruct<double[], double[]> decoder;
     public final int outputDepth;
 
-    public FullConvolution(int inputDepth, VarDiffStruct<double[], E, double[]> encoder, Convolution<H, V> convolution, VarDiffStruct<double[], D, double[]> decoder, int outputDepth) {
+    public FullConvolution(int inputDepth, VarDiffStruct<double[], double[]> encoder, Convolution convolution, VarDiffStruct<double[], double[]> decoder, int outputDepth) {
         this.inputDepth = inputDepth;
         this.encoder = encoder;
         this.convolution = convolution;
@@ -42,85 +43,70 @@ public class FullConvolution<E, H, V, D> implements DiffStruct<FullConvolution<E
         return new Input(obj, enc, hor, ver, dec);
     }
 
-    public class Memory {
-        E[][] encm;
-        Convolution<H, V>.Memory convm;
-        D decm;
-
-        public Memory(E[][] encm, Convolution<H, V>.Memory convm, D decm) {
-            this.encm = encm;
-            this.convm = convm;
-            this.decm = decm;
-        }
-
-    }
-
     @Override
-    public Pair<Memory, double[]> forward(Input input) {
-        return forward(input.obj, input.enc, input.hor, input.ver, input.dec);
+    public Result<Input, double[]> result(Input input) {
+        return result(input.obj, input.enc, input.hor, input.ver, input.dec);
     }
 
-    public Pair<Memory, double[]> forward(double[][][] obj, double[] enc, double[] hor, double[] ver, double[] dec) {
+    public Result<Input, double[]> result(double[][][] obj, double[] enc, double[] hor, double[] ver, double[] dec) {
         final int rows = obj.length, cols = obj[0].length;
 
         double[][][] enco = new double[rows][cols][];
+
         @SuppressWarnings("unchecked")
-        E[][] encm = (E[][]) Array.newInstance(encoder.memoryClass(), rows, cols);
+        Function<double[], Pair<double[], double[]>>[][] encm = new Function[rows][cols];
 
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
-                Pair<E, double[]> encp = encoder.forward(obj[row][col], enc);
-                encm[row][col] = encp.getLeft();
-                enco[row][col] = encp.getRight();
+                Result<Pair<double[], double[]>, double[]> encp = encoder.result(obj[row][col], enc);
+                encm[row][col] = encp.derivative();
+                enco[row][col] = encp.value();
             }
         }
 
-        Pair<Convolution<H, V>.Memory, double[]> convp = convolution.forward(enco, hor, ver);
-        Pair<D, double[]> decp = decoder.forward(convp.getRight(), dec);
-        return Pair.of(new Memory(encm, convp.getLeft(), decp.getLeft()), decp.getRight());
-    }
+        Result<Triple<double[][][], double[], double[]>, double[]> convp = convolution.result(enco, hor, ver);
+        Function<double[], Triple<double[][][], double[], double[]>> convm = convp.derivative();
 
-    @Override
-    public Input backward(Memory memory, double[] deltaOutput) {
-        Pair<double[], double[]> decp = decoder.backward(memory.decm, deltaOutput);
-        Triple<double[][][], double[], double[]> convp = convolution.backward(memory.convm, decp.getLeft());
+        Result<Pair<double[], double[]>, double[]> decp = decoder.result(convp.value(), dec);
+        Function<double[], Pair<double[], double[]>> decm = decp.derivative();
 
-        int rows = memory.convm.rows;
-        int cols = memory.convm.cols;
+        return new Result<FullConvolution.Input, double[]>(new Function<double[], Input>() {
 
-        double[][][] dy = convp.getLeft();
-        double[][][] dx = new double[rows][cols][];
+            @Override
+            public Input apply(double[] deltaOutput) {
 
-        double[] enc = new double[encoder.numBoundVars()];
+                Pair<double[], double[]> decp = decm.apply(deltaOutput);
 
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                Pair<double[], double[]> encp = encoder.backward(memory.encm[row][col], dy[row][col]);
-                dx[row][col] = encp.getLeft();
+                Triple<double[][][], double[], double[]> convp = convm.apply(decp.getLeft());
 
-                double[] encd = encp.getRight();
+                double[][][] dy = convp.getLeft();
+                double[][][] dx = new double[rows][cols][];
+
+                double[] enc = new double[encoder.numBoundVars()];
+
+                for (int row = 0; row < rows; row++) {
+                    for (int col = 0; col < cols; col++) {
+                        Pair<double[], double[]> encp = encm[row][col].apply(dy[row][col]);
+                        dx[row][col] = encp.getLeft();
+
+                        double[] encd = encp.getRight();
+
+                        for (int i = 0; i < enc.length; i++) {
+                            enc[i] += encd[i];
+                        }
+                    }
+                }
 
                 for (int i = 0; i < enc.length; i++) {
-                    enc[i] += encd[i];
+                    enc[i] /= rows * cols;
                 }
+
+                return new Input(dx, enc, convp.getMiddle(), convp.getRight(), decp.getRight());
+
             }
-        }
 
-        for (int i = 0; i < enc.length; i++) {
-            enc[i] /= rows * cols;
-        }
-        return new Input(dx, enc, convp.getMiddle(), convp.getRight(), decp.getRight());
+        }, decp.value());
+
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public Class<Input> inputClass() {
-        return (Class<Input>) new Input(null, null, null, null, null).getClass();
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public Class<Memory> memoryClass() {
-        return (Class<Memory>) new Memory(null, null, null).getClass();
-    }
 }

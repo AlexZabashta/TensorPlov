@@ -1,3 +1,4 @@
+package test.mnist;
 import  static java.lang.Math.*;
 
 import core.VectorDiffStruct;

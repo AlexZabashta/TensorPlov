@@ -1,3 +1,4 @@
+package test.mnist;
 
 import java.awt.Color;
 import java.awt.event.WindowEvent;
@@ -13,12 +14,10 @@ import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 
-import org.apache.commons.lang3.tuple.Pair;
-
-import core.VectorDiffStruct;
-import core.VectorDiffStruct.Memory;
+import core.Result;
 import dataset.Convolution;
 import dataset.FullConvolution;
+import dataset.FullConvolution.Input;
 import dataset.ImgConvolution;
 
 public class TestICN extends JFrame {
@@ -145,12 +144,12 @@ public class TestICN extends JFrame {
             }
 
             HVFold hvFold = new HVFold();
-            Convolution<VectorDiffStruct.Memory, VectorDiffStruct.Memory> convolution = new ImgConvolution<>(40, hvFold, hvFold);
+            Convolution convolution = new ImgConvolution(40, hvFold, hvFold);
 
             Encoder encoder = new Encoder();
             Decoder decoder = new Decoder();
 
-            FullConvolution<VectorDiffStruct.Memory, VectorDiffStruct.Memory, VectorDiffStruct.Memory, VectorDiffStruct.Memory> net = new FullConvolution<>(1, encoder, convolution, decoder, 10);
+            FullConvolution net = new FullConvolution(9, encoder, convolution, decoder, 10);
 
             double[] enc = new double[encoder.numBoundVars()];
             double[] dec = new double[decoder.numBoundVars()];
@@ -162,14 +161,26 @@ public class TestICN extends JFrame {
             double[] mhor = new double[hor.length];
             double[] mver = new double[ver.length];
 
+            double[] venc = new double[enc.length];
+            double[] vdec = new double[dec.length];
+            double[] vhor = new double[hor.length];
+            double[] vver = new double[ver.length];
+
+            Arrays.fill(venc, 1.0);
+            Arrays.fill(vdec, 1.0);
+            Arrays.fill(vhor, 1.0);
+            Arrays.fill(vver, 1.0);
+
             encoder.init(enc);
             decoder.init(dec);
             hvFold.init(hor);
             hvFold.init(ver);
 
             int batch = 20;
-            double lr = 1;
+            double lr = 10;
             double gamma = 0.95;
+            double beta1 = 0.95;
+            double beta2 = 0.95;
 
             Random random = new Random();
 
@@ -213,52 +224,38 @@ public class TestICN extends JFrame {
                         }
                     }
 
-                    Pair<FullConvolution<Memory, Memory, Memory, Memory>.Memory, double[]> pair = net.forward(obj, enc, hor, ver, dec);
+                    Result<Input, double[]> result = net.result(obj, enc, hor, ver, dec);
 
-                    double[] y = pair.getRight();
+                    double[] y = result.value();
                     double[] dy = new double[n];
 
                     for (int i = 0; i < n; i++) {
                         dy[i] = y[i] - ty[i];
                     }
 
-                    FullConvolution<Memory, Memory, Memory, Memory>.Input delta = net.backward(pair.getLeft(), dy);
+                    FullConvolution.Input delta = result.derivative().apply(dy);
 
                     for (int i = 0; i < enc.length; i++) {
-                        menc[i] = gamma * menc[i] + (1 - gamma) * delta.enc[i];
-                        enc[i] -= lr * menc[i];
-                    }
-                    for (int i = 0; i < hor.length; i++) {
-                        mhor[i] = gamma * mhor[i] + (1 - gamma) * delta.hor[i];
-                        hor[i] -= lr * mhor[i];
-                    }
-                    for (int i = 0; i < ver.length; i++) {
-                        mver[i] = gamma * mver[i] + (1 - gamma) * delta.ver[i];
-                        ver[i] -= lr * mver[i];
+                        menc[i] = beta1 * menc[i] + (1 - beta1) * delta.enc[i];
+                        venc[i] = beta2 * venc[i] + (1 - beta2) * delta.enc[i] * delta.enc[i];
+                        enc[i] -= lr * menc[i] / (Math.sqrt(venc[i]) + 1e-8);
                     }
                     for (int i = 0; i < dec.length; i++) {
-                        mdec[i] = gamma * mdec[i] + (1 - gamma) * delta.dec[i];
-                        dec[i] -= lr * mdec[i];
+                        mdec[i] = beta1 * mdec[i] + (1 - beta1) * delta.dec[i];
+                        vdec[i] = beta2 * vdec[i] + (1 - beta2) * delta.dec[i] * delta.dec[i];
+                        dec[i] -= lr * mdec[i] / (Math.sqrt(vdec[i]) + 1e-8);
+                    }
+                    for (int i = 0; i < hor.length; i++) {
+                        mhor[i] = beta1 * mhor[i] + (1 - beta1) * delta.hor[i];
+                        vhor[i] = beta2 * vhor[i] + (1 - beta2) * delta.hor[i] * delta.hor[i];
+                        hor[i] -= lr * mhor[i] / (Math.sqrt(vhor[i]) + 1e-8);
+                    }
+                    for (int i = 0; i < ver.length; i++) {
+                        mver[i] = beta1 * mver[i] + (1 - beta1) * delta.ver[i];
+                        vver[i] = beta2 * vver[i] + (1 - beta2) * delta.ver[i] * delta.ver[i];
+                        ver[i] -= lr * mver[i] / (Math.sqrt(vver[i]) + 1e-8);
                     }
 
-                    if (random.nextInt(100) == 0) {
-                        for (int i = 0; i < 20; i++) {
-                            System.out.printf(Locale.ENGLISH, "%7.3f ", enc[i * 70]);
-                        }
-                        System.out.println();
-                        for (int i = 0; i < 20; i++) {
-                            System.out.printf(Locale.ENGLISH, "%7.3f ", hor[i * 372]);
-                        }
-                        System.out.println();
-                        for (int i = 0; i < 20; i++) {
-                            System.out.printf(Locale.ENGLISH, "%7.3f ", ver[i * 372]);
-                        }
-                        System.out.println();
-                        for (int i = 0; i < 20; i++) {
-                            System.out.printf(Locale.ENGLISH, "%7.3f ", dec[i * 107]);
-                        }
-                        System.out.println();
-                    }
                     int r = random.nextInt(n);
 
                     for (int i = 0; i < n; i++) {
@@ -269,6 +266,24 @@ public class TestICN extends JFrame {
 
                     cm[e][r] += 1;
 
+                }
+                if (iter % 40 == 0) {
+                    for (int i = 0; i < 20; i++) {
+                        System.out.printf(Locale.ENGLISH, "%7.3f ", enc[i * 70]);
+                    }
+                    System.out.println();
+                    for (int i = 0; i < 20; i++) {
+                        System.out.printf(Locale.ENGLISH, "%7.3f ", hor[i * 250]);
+                    }
+                    System.out.println();
+                    for (int i = 0; i < 20; i++) {
+                        System.out.printf(Locale.ENGLISH, "%7.3f ", ver[i * 250]);
+                    }
+                    System.out.println();
+                    for (int i = 0; i < 20; i++) {
+                        System.out.printf(Locale.ENGLISH, "%7.3f ", dec[i * 107]);
+                    }
+                    System.out.println();
                 }
 
                 testImgs.draw(iter, cm);

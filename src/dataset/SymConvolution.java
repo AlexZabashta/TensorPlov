@@ -1,28 +1,29 @@
 package dataset;
 
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 
+import core.Result;
 import core.VarDiffStruct;
 
-public class SymConvolution<H, V> extends Convolution<H, V> {
+public class SymConvolution extends Convolution {
 
-    public SymConvolution(int depth, VarDiffStruct<double[], H, double[]> horzFold, VarDiffStruct<double[], V, double[]> vertFold) {
+    public SymConvolution(int depth, VarDiffStruct<double[], double[]> horzFold, VarDiffStruct<double[], double[]> vertFold) {
         super(depth, horzFold, vertFold);
     }
 
     @Override
-    Pair<Memory, double[]> forward(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
+    Result<Triple<double[][][], double[], double[]>, double[]> result(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
         int curRows = rows, curCols = cols;
         double normH = 0, normV = 0;
 
         while (curRows > 1 || curCols > 1) {
-            double rowSim = Double.POSITIVE_INFINITY, colSim = Double.POSITIVE_INFINITY;
+            double rowCos = -1, colCos = -1;
             int rowA = 0, rowB = 1;
             int colA = 0, colB = 1;
 
             for (int rowU = 1; rowU < curRows; rowU++) {
                 for (int rowD = 0; rowD < rowU; rowD++) {
-                    double sim = 0;
+                    double cos = 0;
                     double sumD = 0, sumU = 0;
                     for (int col = 0; col < curCols; col++) {
                         for (int i = 0; i < depth; i++) {
@@ -32,14 +33,14 @@ public class SymConvolution<H, V> extends Convolution<H, V> {
                             sumD += valD;
                             sumU += valU;
                             double diff = valD - valU;
-                            sim += diff * diff;
+                            cos += diff * diff;
                         }
                     }
 
-                    sim /= curCols;
+                    cos = Math.abs(cos);
 
-                    if (sim < rowSim) {
-                        rowSim = sim;
+                    if (cos > rowCos) {
+                        rowCos = cos;
                         rowA = rowD;
                         rowB = rowU;
 
@@ -54,7 +55,7 @@ public class SymConvolution<H, V> extends Convolution<H, V> {
 
             for (int colR = 1; colR < curCols; colR++) {
                 for (int colL = 0; colL < colR; colL++) {
-                    double sim = 0;
+                    double cos = 0;
                     double sumL = 0, sumR = 0;
                     for (int row = 0; row < curRows; row++) {
                         for (int i = 0; i < depth; i++) {
@@ -64,15 +65,15 @@ public class SymConvolution<H, V> extends Convolution<H, V> {
                             sumL += valL;
                             sumR += valR;
                             double diff = valL - valR;
-                            sim += diff * diff;
+                            cos += diff * diff;
 
                         }
                     }
 
-                    sim /= curRows;
+                    cos = Math.abs(cos);
 
-                    if (sim < colSim) {
-                        colSim = sim;
+                    if (cos > colCos) {
+                        colCos = cos;
                         colA = colL;
                         colB = colR;
 
@@ -85,7 +86,7 @@ public class SymConvolution<H, V> extends Convolution<H, V> {
                 }
             }
 
-            if (colSim < rowSim) {
+            if (colCos > rowCos) {
                 --curCols;
                 for (int row = 0; row < curRows; row++) {
                     Node node = buildNode(true, horzBoundVar, nodes[row][colA], nodes[row][colB]);
@@ -106,7 +107,7 @@ public class SymConvolution<H, V> extends Convolution<H, V> {
         }
 
         Node root = nodes[0][0];
-        return Pair.of(new Memory(root, rows, cols, normH, normV), root.values);
+        return new Result<>(new Memory(root, rows, cols, normH, normV), root.values);
 
     }
 

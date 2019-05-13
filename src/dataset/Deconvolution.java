@@ -1,33 +1,25 @@
 package dataset;
 
+import java.util.function.Function;
+
 import org.apache.commons.lang3.tuple.Pair;
 
-import core.DiffStruct;
+import core.DiffFunct;
+import core.Result;
 
-public class Deconvolution implements DiffStruct<double[], Deconvolution.Memory, double[][][]> {
+public class Deconvolution implements DiffFunct<double[], double[][][]> {
 
-    class Memory {
+    class Memory implements Function<double[][][], double[]> {
+
+        @Override
+        public double[] apply(double[][][] dy) {
+            return null;
+        }
 
     }
 
     @Override
-    public Pair<Memory, double[][][]> forward(double[] input) {
-        return null;
-    }
-
-    @Override
-    public double[] backward(Memory memory, double[][][] deltaOutput) {
-        return null;
-    }
-
-    @Override
-    public Class<double[]> inputClass() {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public Class<Memory> memoryClass() {
+    public Result<double[], double[][][]> result(double[] input) {
         // TODO Auto-generated method stub
         return null;
     }

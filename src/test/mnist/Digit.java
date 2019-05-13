@@ -1,3 +1,4 @@
+package test.mnist;
 
 public class Digit {
     final double[] values;

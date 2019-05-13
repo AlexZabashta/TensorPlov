@@ -1,16 +1,17 @@
 package dataset;
 
-import java.lang.reflect.Array;
+import java.util.function.Function;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 
-import core.DiffStruct;
+import core.DiffFunct;
+import core.Result;
 import core.VarDiffStruct;
 
-public abstract class Convolution<H, V> implements DiffStruct<Triple<double[][][], double[], double[]>, Convolution<H, V>.Memory, double[]> {
+public abstract class Convolution implements DiffFunct<Triple<double[][][], double[], double[]>, double[]> {
 
-    public class Memory {
+    public class Memory implements Function<double[], Triple<double[][][], double[], double[]>> {
         final Node root;
         final int rows, cols;
         final double normH, normV;
@@ -29,7 +30,8 @@ public abstract class Convolution<H, V> implements DiffStruct<Triple<double[][][
             }
         }
 
-        Triple<double[][][], double[], double[]> backward(double[] dy) {
+        @Override
+        public Triple<double[][][], double[], double[]> apply(double[] dy) {
             double[][][] dx = new double[rows][cols][];
             double[] dh = new double[horzFold.numBoundVars()];
             double[] dv = new double[vertFold.numBoundVars()];
@@ -66,13 +68,15 @@ public abstract class Convolution<H, V> implements DiffStruct<Triple<double[][][
 
     }
 
-    abstract class Fold extends Node {
+    class Fold extends Node {
         final Node first, secnd;
+        final Function<double[], Pair<double[], double[]>> derivative;
 
-        Fold(Node first, Node secnd, double[] values) {
+        Fold(Node first, Node secnd, Function<double[], Pair<double[], double[]>> derivative, double[] values) {
             super(Math.max(first.level, secnd.level) + 1, values);
             this.first = first;
             this.secnd = secnd;
+            this.derivative = derivative;
         }
 
         void addWithWeightAndNormalization(double[] src, double[] dst) {
@@ -80,14 +84,18 @@ public abstract class Convolution<H, V> implements DiffStruct<Triple<double[][][
             for (int i = 0; i < src.length; i++) {
                 sum += src[i] * src[i];
             }
-//            double scale = weight() / Math.sqrt(sum);
+            // double scale = weight() / Math.sqrt(sum);
             double scale = weight();
             for (int i = 0; i < src.length; i++) {
                 dst[i] += src[i] * scale;
             }
         }
 
-        abstract double[] backward(double[] dy, double[] sdh, double[] sdv);
+        double[] backward(double[] dy, double[] sdh, double[] sdv) {
+            Pair<double[], double[]> dxh = derivative.apply(dy);
+            addWithWeightAndNormalization(sdh, dxh.getRight());
+            return dxh.getLeft();
+        }
 
         @Override
         void backward(double[] dy, double[][][] dInput, double[] sdh, double[] sdv) {
@@ -103,38 +111,6 @@ public abstract class Convolution<H, V> implements DiffStruct<Triple<double[][][
             secnd.backward(db, dInput, sdh, sdv);
         }
 
-    }
-
-    class HorzFold extends Fold {
-        final H horzMem;
-
-        HorzFold(Node first, Node secnd, H horzMem, double[] values) {
-            super(first, secnd, values);
-            this.horzMem = horzMem;
-        }
-
-        @Override
-        double[] backward(double[] dy, double[] sdh, double[] sdv) {
-            Pair<double[], double[]> dxh = horzFold.backward(horzMem, dy);
-            addWithWeightAndNormalization(sdh, dxh.getRight());
-            return dxh.getLeft();
-        }
-    }
-
-    class VertFold extends Fold {
-        final V vertMem;
-
-        VertFold(Node first, Node secnd, V vertMem, double[] values) {
-            super(first, secnd, values);
-            this.vertMem = vertMem;
-        }
-
-        @Override
-        double[] backward(double[] dy, double[] sdh, double[] sdv) {
-            Pair<double[], double[]> dxv = vertFold.backward(vertMem, dy);
-            addWithWeightAndNormalization(sdv, dxv.getRight());
-            return dxv.getLeft();
-        }
     }
 
     class DatasetCell extends Node {
@@ -154,18 +130,13 @@ public abstract class Convolution<H, V> implements DiffStruct<Triple<double[][][
     }
 
     public final int depth;
-    public final VarDiffStruct<double[], H, double[]> horzFold;
-    public final VarDiffStruct<double[], V, double[]> vertFold;
+    public final VarDiffStruct<double[], double[]> horzFold;
+    public final VarDiffStruct<double[], double[]> vertFold;
 
-    public Convolution(int depth, VarDiffStruct<double[], H, double[]> horzFold, VarDiffStruct<double[], V, double[]> vertFold) {
+    public Convolution(int depth, VarDiffStruct<double[], double[]> horzFold, VarDiffStruct<double[], double[]> vertFold) {
         this.depth = depth;
         this.horzFold = horzFold;
         this.vertFold = vertFold;
-    }
-
-    @Override
-    public Triple<double[][][], double[], double[]> backward(Memory memory, double[] deltaOutput) {
-        return memory.backward(deltaOutput);
     }
 
     Fold buildNode(boolean horizontal, double[] foldBoundVar, Node first, Node secnd) {
@@ -174,45 +145,32 @@ public abstract class Convolution<H, V> implements DiffStruct<Triple<double[][][
         System.arraycopy(secnd.values, 0, x, depth, depth);
 
         if (horizontal) {
-            Pair<H, double[]> result = horzFold.forward(x, foldBoundVar);
-            return new HorzFold(first, secnd, result.getLeft(), result.getRight());
+            Result<Pair<double[], double[]>, double[]> result = horzFold.result(x, foldBoundVar);
+            return new Fold(first, secnd, result.derivative(), result.value());
         } else {
-            Pair<V, double[]> result = vertFold.forward(x, foldBoundVar);
-            return new VertFold(first, secnd, result.getLeft(), result.getRight());
+            Result<Pair<double[], double[]>, double[]> result = vertFold.result(x, foldBoundVar);
+            return new Fold(first, secnd, result.derivative(), result.value());
         }
     }
 
     @Override
-    public Pair<Memory, double[]> forward(Triple<double[][][], double[], double[]> input) {
-        return forward(input.getLeft(), input.getMiddle(), input.getRight());
+    public Result<Triple<double[][][], double[], double[]>, double[]> result(Triple<double[][][], double[], double[]> input) {
+        return result(input.getLeft(), input.getMiddle(), input.getRight());
     }
 
-    public Pair<Memory, double[]> forward(double[][][] dataset, double[] horzBoundVar, double[] vertBoundVar) {
+    public Result<Triple<double[][][], double[], double[]>, double[]> result(double[][][] dataset, double[] horzBoundVar, double[] vertBoundVar) {
         final int rows = dataset.length, cols = dataset[0].length;
 
-        @SuppressWarnings("unchecked")
-        Node[][] nodes = (Node[][]) Array.newInstance(Node.class, rows, cols);
+        Node[][] nodes = new Node[rows][cols];
 
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 nodes[row][col] = new DatasetCell(dataset[row][col], row, col);
             }
         }
-        return forward(rows, cols, nodes, horzBoundVar, vertBoundVar);
+        return result(rows, cols, nodes, horzBoundVar, vertBoundVar);
     }
 
-    abstract Pair<Memory, double[]> forward(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar);
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public Class<Triple<double[][][], double[], double[]>> inputClass() {
-        return (Class<Triple<double[][][], double[], double[]>>) Triple.of(null, null, null).getClass();
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public Class<Memory> memoryClass() {
-        return (Class<Memory>) new Memory(null, 0, 0, 0, 0).getClass();
-    }
+    abstract Result<Triple<double[][][], double[], double[]>, double[]> result(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar);
 
 }
