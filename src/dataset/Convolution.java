@@ -68,7 +68,7 @@ public abstract class Convolution implements DiffFunct<Triple<double[][][], doub
 
     }
 
-    class Fold extends Node {
+    abstract class Fold extends Node {
         final Node first, secnd;
         final Function<double[], Pair<double[], double[]>> derivative;
 
@@ -91,11 +91,7 @@ public abstract class Convolution implements DiffFunct<Triple<double[][][], doub
             }
         }
 
-        double[] backward(double[] dy, double[] sdh, double[] sdv) {
-            Pair<double[], double[]> dxh = derivative.apply(dy);
-            addWithWeightAndNormalization(sdh, dxh.getRight());
-            return dxh.getLeft();
-        }
+        abstract double[] backward(double[] dy, double[] sdh, double[] sdv);
 
         @Override
         void backward(double[] dy, double[][][] dInput, double[] sdh, double[] sdv) {
@@ -111,6 +107,32 @@ public abstract class Convolution implements DiffFunct<Triple<double[][][], doub
             secnd.backward(db, dInput, sdh, sdv);
         }
 
+    }
+
+    class HorzFold extends Fold {
+        HorzFold(Node first, Node secnd, Function<double[], Pair<double[], double[]>> derivative, double[] values) {
+            super(first, secnd, derivative, values);
+        }
+
+        @Override
+        double[] backward(double[] dy, double[] sdh, double[] sdv) {
+            Pair<double[], double[]> dxh = derivative.apply(dy);
+            addWithWeightAndNormalization(sdh, dxh.getRight());
+            return dxh.getLeft();
+        }
+    }
+
+    class VertFold extends Fold {
+        VertFold(Node first, Node secnd, Function<double[], Pair<double[], double[]>> derivative, double[] values) {
+            super(first, secnd, derivative, values);
+        }
+
+        @Override
+        double[] backward(double[] dy, double[] sdh, double[] sdv) {
+            Pair<double[], double[]> dxv = derivative.apply(dy);
+            addWithWeightAndNormalization(sdv, dxv.getRight());
+            return dxv.getLeft();
+        }
     }
 
     class DatasetCell extends Node {
@@ -146,10 +168,10 @@ public abstract class Convolution implements DiffFunct<Triple<double[][][], doub
 
         if (horizontal) {
             Result<Pair<double[], double[]>, double[]> result = horzFold.result(x, foldBoundVar);
-            return new Fold(first, secnd, result.derivative(), result.value());
+            return new HorzFold(first, secnd, result.derivative(), result.value());
         } else {
             Result<Pair<double[], double[]>, double[]> result = vertFold.result(x, foldBoundVar);
-            return new Fold(first, secnd, result.derivative(), result.value());
+            return new VertFold(first, secnd, result.derivative(), result.value());
         }
     }
 
