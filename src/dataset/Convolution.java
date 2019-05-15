@@ -60,16 +60,19 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
         }
 
         void backward(double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors) {
-            double error = 0;
+            double sum = 0;
             for (int i = 0; i < dy.length; i++) {
-                error += dy[i] * dy[i];
+                sum += dy[i] * dy[i];
             }
-            sumErrors += Math.sqrt(error) * weight();
+
+            double error = Math.sqrt(sum);
+
+            sumErrors += error * weight();
             normErrors += weight();
 
-            error = sumErrors / normErrors;
-            for (int i = 0; i < depth; i++) {
-                dy[i] *= error;
+            double norm = 1 / (error + 1e-7);
+            for (int i = 0; i < dy.length; i++) {
+                dy[i] *= norm;
             }
 
             backwardE(dy, dx, sdh, sdv, sumErrors, normErrors);
@@ -156,6 +159,10 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
 
         @Override
         void backwardE(double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors) {
+            double avgError = sumErrors / normErrors;
+            for (int i = 0; i < dy.length; i++) {
+                dy[i] *= avgError;
+            }
             dx[row][col] = dy;
         }
 
