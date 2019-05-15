@@ -14,11 +14,13 @@ import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import core.Result;
 import dataset.Convolution;
 import dataset.FullConvolution;
-import dataset.FullConvolution.Input;
 import dataset.ImgConvolution;
+import grad.MAdaGrad;
 
 public class TestICN extends JFrame {
 
@@ -156,31 +158,14 @@ public class TestICN extends JFrame {
             double[] hor = new double[hvFold.numBoundVars()];
             double[] ver = new double[hvFold.numBoundVars()];
 
-            double[] menc = new double[enc.length];
-            double[] mdec = new double[dec.length];
-            double[] mhor = new double[hor.length];
-            double[] mver = new double[ver.length];
-
-            double[] venc = new double[enc.length];
-            double[] vdec = new double[dec.length];
-            double[] vhor = new double[hor.length];
-            double[] vver = new double[ver.length];
-
-            Arrays.fill(venc, 1.0);
-            Arrays.fill(vdec, 1.0);
-            Arrays.fill(vhor, 1.0);
-            Arrays.fill(vver, 1.0);
-
             encoder.init(enc);
             decoder.init(dec);
             hvFold.init(hor);
             hvFold.init(ver);
 
+            MAdaGrad grad = new MAdaGrad(new double[][] { enc, hor, ver, dec }, 0.1, 0.9, 0.99);
+
             int batch = 20;
-            double lr = 10;
-            double gamma = 0.95;
-            double beta1 = 0.95;
-            double beta2 = 0.95;
 
             Random random = new Random();
 
@@ -224,7 +209,7 @@ public class TestICN extends JFrame {
                         }
                     }
 
-                    Result<Input, double[]> result = net.result(obj, enc, hor, ver, dec);
+                    Result<Pair<double[][][], double[][]>, double[]> result = net.result(obj, enc, hor, ver, dec);
 
                     double[] y = result.value();
                     double[] dy = new double[n];
@@ -233,28 +218,9 @@ public class TestICN extends JFrame {
                         dy[i] = y[i] - ty[i];
                     }
 
-                    FullConvolution.Input delta = result.derivative().apply(dy);
+                    Pair<double[][][], double[][]> delta = result.derivative().apply(dy);
 
-                    for (int i = 0; i < enc.length; i++) {
-                        menc[i] = beta1 * menc[i] + (1 - beta1) * delta.enc[i];
-                        venc[i] = beta2 * venc[i] + (1 - beta2) * delta.enc[i] * delta.enc[i];
-                        enc[i] -= lr * menc[i] / (Math.sqrt(venc[i]) + 1e-8);
-                    }
-                    for (int i = 0; i < dec.length; i++) {
-                        mdec[i] = beta1 * mdec[i] + (1 - beta1) * delta.dec[i];
-                        vdec[i] = beta2 * vdec[i] + (1 - beta2) * delta.dec[i] * delta.dec[i];
-                        dec[i] -= lr * mdec[i] / (Math.sqrt(vdec[i]) + 1e-8);
-                    }
-                    for (int i = 0; i < hor.length; i++) {
-                        mhor[i] = beta1 * mhor[i] + (1 - beta1) * delta.hor[i];
-                        vhor[i] = beta2 * vhor[i] + (1 - beta2) * delta.hor[i] * delta.hor[i];
-                        hor[i] -= lr * mhor[i] / (Math.sqrt(vhor[i]) + 1e-8);
-                    }
-                    for (int i = 0; i < ver.length; i++) {
-                        mver[i] = beta1 * mver[i] + (1 - beta1) * delta.ver[i];
-                        vver[i] = beta2 * vver[i] + (1 - beta2) * delta.ver[i] * delta.ver[i];
-                        ver[i] -= lr * mver[i] / (Math.sqrt(vver[i]) + 1e-8);
-                    }
+                    grad.accept(delta.getRight());
 
                     int r = random.nextInt(n);
 

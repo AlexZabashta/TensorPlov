@@ -3,13 +3,12 @@ package dataset;
 import java.util.function.Function;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
 
-import core.DiffFunct;
+import core.MultiVarDiffStruct;
 import core.Result;
 import core.VarDiffStruct;
 
-public class FullConvolution implements DiffFunct<FullConvolution.Input, double[]> {
+public class FullConvolution implements MultiVarDiffStruct<double[][][], double[]> {
 
     public final int inputDepth;
     public final VarDiffStruct<double[], double[]> encoder;
@@ -25,30 +24,7 @@ public class FullConvolution implements DiffFunct<FullConvolution.Input, double[
         this.outputDepth = outputDepth;
     }
 
-    public class Input {
-        public double[][][] obj;
-        public double[] enc, hor, ver, dec;
-
-        public Input(double[][][] obj, double[] enc, double[] hor, double[] ver, double[] dec) {
-            this.obj = obj;
-            this.enc = enc;
-            this.hor = hor;
-            this.ver = ver;
-            this.dec = dec;
-        }
-
-    }
-
-    public Input input(double[][][] obj, double[] enc, double[] hor, double[] ver, double[] dec) {
-        return new Input(obj, enc, hor, ver, dec);
-    }
-
-    @Override
-    public Result<Input, double[]> result(Input input) {
-        return result(input.obj, input.enc, input.hor, input.ver, input.dec);
-    }
-
-    public Result<Input, double[]> result(double[][][] obj, double[] enc, double[] hor, double[] ver, double[] dec) {
+    public Result<Pair<double[][][], double[][]>, double[]> result(double[][][] obj, double[] enc, double[] hor, double[] ver, double[] dec) {
         final int rows = obj.length, cols = obj[0].length;
 
         double[][][] enco = new double[rows][cols][];
@@ -64,20 +40,22 @@ public class FullConvolution implements DiffFunct<FullConvolution.Input, double[
             }
         }
 
-        Result<Triple<double[][][], double[], double[]>, double[]> convp = convolution.result(enco, hor, ver);
-        Function<double[], Triple<double[][][], double[], double[]>> convm = convp.derivative();
+        Result<Pair<double[][][], double[][]>, double[]> convp = convolution.result(enco, hor, ver);
+        Function<double[], Pair<double[][][], double[][]>> convm = convp.derivative();
 
         Result<Pair<double[], double[]>, double[]> decp = decoder.result(convp.value(), dec);
         Function<double[], Pair<double[], double[]>> decm = decp.derivative();
 
-        return new Result<FullConvolution.Input, double[]>(new Function<double[], Input>() {
+        return new Result<Pair<double[][][], double[][]>, double[]>(new Function<double[], Pair<double[][][], double[][]>>() {
 
             @Override
-            public Input apply(double[] deltaOutput) {
+            public Pair<double[][][], double[][]> apply(double[] deltaOutput) {
 
                 Pair<double[], double[]> decp = decm.apply(deltaOutput);
 
-                Triple<double[][][], double[], double[]> convp = convm.apply(decp.getLeft());
+                Pair<double[][][], double[][]> convp = convm.apply(decp.getLeft());
+
+                // TODO transfer error
 
                 double[][][] dy = convp.getLeft();
                 double[][][] dx = new double[rows][cols][];
@@ -101,12 +79,23 @@ public class FullConvolution implements DiffFunct<FullConvolution.Input, double[
                     enc[i] /= rows * cols;
                 }
 
-                return new Input(dx, enc, convp.getMiddle(), convp.getRight(), decp.getRight());
+                double[][] dhv = convp.getRight();
 
+                return Pair.of(dx, new double[][] { enc, dhv[0], dhv[1], decp.getRight() });
             }
 
         }, decp.value());
 
+    }
+
+    @Override
+    public int[] numBoundVars() {
+        return new int[] { encoder.numBoundVars(), convolution.horzFold.numBoundVars(), convolution.vertFold.numBoundVars(), decoder.numBoundVars() };
+    }
+
+    @Override
+    public Result<Pair<double[][][], double[][]>, double[]> result(double[][][] freeVar, double[]... bounVar) {
+        return result(freeVar, bounVar[0], bounVar[1], bounVar[2], bounVar[3]);
     }
 
 }

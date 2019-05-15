@@ -3,15 +3,14 @@ package dataset;
 import java.util.function.Function;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
 
-import core.DiffFunct;
+import core.MultiVarDiffStruct;
 import core.Result;
 import core.VarDiffStruct;
 
-public abstract class Convolution implements DiffFunct<Triple<double[][][], double[], double[]>, double[]> {
+public abstract class Convolution implements MultiVarDiffStruct<double[][][], double[]> {
 
-    public class Memory implements Function<double[], Triple<double[][][], double[], double[]>> {
+    public class Memory implements Function<double[], Pair<double[][][], double[][]>> {
         final Node root;
         final int rows, cols;
         final double normH, normV;
@@ -31,7 +30,7 @@ public abstract class Convolution implements DiffFunct<Triple<double[][][], doub
         }
 
         @Override
-        public Triple<double[][][], double[], double[]> apply(double[] dy) {
+        public Pair<double[][][], double[][]> apply(double[] dy) {
             double[][][] dx = new double[rows][cols][];
             double[] dh = new double[horzFold.numBoundVars()];
             double[] dv = new double[vertFold.numBoundVars()];
@@ -46,7 +45,7 @@ public abstract class Convolution implements DiffFunct<Triple<double[][][], doub
                 normalize(dv, 1.0 / normV);
             }
 
-            return Triple.of(dx, dh, dv);
+            return Pair.of(dx, new double[][] { dh, dv });
         }
 
     }
@@ -60,6 +59,7 @@ public abstract class Convolution implements DiffFunct<Triple<double[][][], doub
             this.values = values;
         }
 
+        // TODO transfer error
         abstract void backward(double[] dy, double[][][] dx, double[] sdh, double[] sdv);
 
         double weight() {
@@ -80,10 +80,10 @@ public abstract class Convolution implements DiffFunct<Triple<double[][][], doub
         }
 
         void addWithWeightAndNormalization(double[] src, double[] dst) {
-            double sum = 1e-9;
-            for (int i = 0; i < src.length; i++) {
-                sum += src[i] * src[i];
-            }
+            // double sum = 1e-9;
+            // for (int i = 0; i < src.length; i++) {
+            // sum += src[i] * src[i];
+            // }
             // double scale = weight() / Math.sqrt(sum);
             double scale = weight();
             for (int i = 0; i < src.length; i++) {
@@ -176,11 +176,11 @@ public abstract class Convolution implements DiffFunct<Triple<double[][][], doub
     }
 
     @Override
-    public Result<Triple<double[][][], double[], double[]>, double[]> result(Triple<double[][][], double[], double[]> input) {
-        return result(input.getLeft(), input.getMiddle(), input.getRight());
+    public Result<Pair<double[][][], double[][]>, double[]> result(double[][][] freeVar, double[]... bounVar) {
+        return result(freeVar, bounVar[0], bounVar[1]);
     }
 
-    public Result<Triple<double[][][], double[], double[]>, double[]> result(double[][][] dataset, double[] horzBoundVar, double[] vertBoundVar) {
+    public Result<Pair<double[][][], double[][]>, double[]> result(double[][][] dataset, double[] horzBoundVar, double[] vertBoundVar) {
         final int rows = dataset.length, cols = dataset[0].length;
 
         Node[][] nodes = new Node[rows][cols];
@@ -193,6 +193,11 @@ public abstract class Convolution implements DiffFunct<Triple<double[][][], doub
         return result(rows, cols, nodes, horzBoundVar, vertBoundVar);
     }
 
-    abstract Result<Triple<double[][][], double[], double[]>, double[]> result(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar);
+    abstract Result<Pair<double[][][], double[][]>, double[]> result(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar);
+
+    @Override
+    public int[] numBoundVars() {
+        return new int[] { horzFold.numBoundVars(), vertFold.numBoundVars() };
+    }
 
 }

@@ -1,6 +1,6 @@
 package dataset;
 
-import org.apache.commons.lang3.tuple.Triple;
+import org.apache.commons.lang3.tuple.Pair;
 
 import core.Result;
 import core.VarDiffStruct;
@@ -12,7 +12,7 @@ public class SymConvolution extends Convolution {
     }
 
     @Override
-    Result<Triple<double[][][], double[], double[]>, double[]> result(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
+    Result<Pair<double[][][], double[][]>, double[]> result(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
         int curRows = rows, curCols = cols;
         double normH = 0, normV = 0;
 

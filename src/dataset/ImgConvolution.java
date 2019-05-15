@@ -1,6 +1,6 @@
 package dataset;
 
-import org.apache.commons.lang3.tuple.Triple;
+import org.apache.commons.lang3.tuple.Pair;
 
 import core.Result;
 import core.VarDiffStruct;
@@ -12,30 +12,31 @@ public class ImgConvolution extends Convolution {
     }
 
     @Override
-    Result<Triple<double[][][], double[], double[]>, double[]> result(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
+    Result<Pair<double[][][], double[][]>, double[]> result(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
         int curRows = rows, curCols = cols;
         double normH = 0, normV = 0;
 
         while (curRows > 1 || curCols > 1) {
-            double rowSim = Double.POSITIVE_INFINITY, colSim = Double.POSITIVE_INFINITY;
+            // double rowSim = Double.POSITIVE_INFINITY, colSim = Double.POSITIVE_INFINITY;
             double rowCos = -1, colCos = -1;
             int rowF = 0, colF = 0;
 
             for (int rowU = 1; rowU < curRows; rowU++) {
                 int rowD = rowU - 1;
-                double sim = 0, cos = 0;
+                // double sim = 0;
+                double cos = 0;
                 for (int col = 0; col < curCols; col++) {
                     for (int i = 0; i < depth; i++) {
                         double valD = (nodes[rowD][col]).values[i];
                         double valU = (nodes[rowU][col]).values[i];
-                        double diff = valD - valU;
-                        sim += diff * diff;
+                        // double diff = valD - valU;
+                        // sim += diff * diff;
                         cos += valD * valU;
                     }
                 }
 
                 cos = Math.abs(cos);
-                sim /= curCols;
+                // sim /= curCols;
 
                 // if (sim < rowSim) {
                 // rowSim = sim;
@@ -50,15 +51,16 @@ public class ImgConvolution extends Convolution {
             for (int colR = 1; colR < curCols; colR++) {
 
                 int colL = colR - 1;
-                double sim = 0, cos = 0;
+                // double sim = 0;
+                double cos = 0;
 
                 for (int row = 0; row < curRows; row++) {
                     for (int i = 0; i < depth; i++) {
                         double valL = (nodes[row][colL]).values[i];
                         double valR = (nodes[row][colR]).values[i];
 
-                        double diff = valL - valR;
-                        sim += diff * diff;
+                        // double diff = valL - valR;
+                        // sim += diff * diff;
                         cos += valL * valR;
 
                     }
@@ -66,7 +68,7 @@ public class ImgConvolution extends Convolution {
 
                 cos = Math.abs(cos);
 
-                sim /= curRows;
+                // sim /= curRows;
                 // if (sim < colSim) {
                 // colSim = sim;
                 // colF = colL;
