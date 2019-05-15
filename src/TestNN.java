@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.ToDoubleFunction;
 
 import org.apache.commons.csv.CSVFormat;
@@ -15,17 +17,18 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 
 import clsf.Dataset;
+import core.MultiVarDiffStruct;
+import core.ParallelVDiffStruct;
+import core.Pipe;
 import core.Result;
 import dataset.Convolution;
-import dataset.FullConvolution;
 import dataset.SymConvolution;
-import grad.AdaGrad;
 import grad.MAdaGrad;
 import mfextraction.CMFExtractor;
 import mfextraction.KNNLandMark;
 
 public class TestNN {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
 
         final List<Dataset> datasets = new ArrayList<>();
 
@@ -65,45 +68,13 @@ public class TestNN {
             }
         }
 
-        final int numData = datasets.size();
-        System.out.println(numData);
-        final double[][] metaData = new double[numData][];
-        HVFold hvFold = new HVFold();
-        Convolution convolution = new SymConvolution(40, hvFold, hvFold);
-
-        Encoder encoder = new Encoder();
-        Decoder decoder = new Decoder();
-        Simple simple = new Simple();
-
-        FullConvolution net = new FullConvolution(2, encoder, convolution, decoder, 1);
-
-        double[] enc = new double[encoder.numBoundVars()];
-        double[] dec = new double[decoder.numBoundVars()];
-        double[] hor = new double[hvFold.numBoundVars()];
-        double[] ver = new double[hvFold.numBoundVars()];
-        double[] sim = new double[simple.numBoundVars()];
-
-        AdaGrad sGrad = new AdaGrad(sim, 0.1, 0.9, 0.99);
-        MAdaGrad cGrad = new MAdaGrad(new double[][] { enc, hor, ver, dec }, 0.1, 0.9, 0.99);
-
-        encoder.init(enc);
-        decoder.init(dec);
-        hvFold.init(hor);
-        hvFold.init(ver);
-        simple.init(sim);
-
-        int batchs = 10;
-        double alpha = 0.97;
-
-        double mseS = 1;
-        double mseC = 1;
-
         CMFExtractor extractor = new CMFExtractor();
+        ToDoubleFunction<Dataset> knnScore = new KNNLandMark();
         int numMF = extractor.length();
 
-        for (int i = 0; i < numData; i++) {
-            metaData[i] = extractor.apply(datasets.get(i));
-        }
+        final int numData = datasets.size();
+        List<Dataset> train = new ArrayList<>();
+        List<Dataset> test = new ArrayList<>();
 
         final double[] min = new double[numMF];
         final double[] max = new double[numMF];
@@ -112,69 +83,236 @@ public class TestNN {
         Arrays.fill(max, Double.NEGATIVE_INFINITY);
 
         for (int i = 0; i < numData; i++) {
+            double[] vector = extractor.apply(datasets.get(i));
             for (int j = 0; j < numMF; j++) {
-                min[j] = Math.min(min[j], metaData[i][j]);
-                max[j] = Math.max(max[j], metaData[i][j]);
+                min[j] = Math.min(min[j], vector[j]);
+                max[j] = Math.max(max[j], vector[j]);
             }
         }
-        ToDoubleFunction<Dataset> knnScore = new KNNLandMark();
 
-        Random random = new Random();
+        Collections.sort(datasets, Comparator.comparing(dataset -> dataset.name));
+
+        for (int i = 0; i < numData; i++) {
+            if (i % 10 == 0) {
+                test.add(datasets.get(i));
+            } else {
+                train.add(datasets.get(i));
+            }
+        }
+
+        System.out.println(numData);
+        HVFold hvFold = new HVFold();
+        Convolution convolution = new SymConvolution(40, hvFold, hvFold);
+
+        Encoder encoder = new Encoder();
+        Decoder decoder = new Decoder();
+        Simple simple = new Simple();
+
+        MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(true, encoder));
+        MultiVarDiffStruct<double[], double[]> mdecoder = MultiVarDiffStruct.convert(decoder);
+        Pipe<double[][][], ?, double[]> net = Pipe.of(pencoder, convolution, mdecoder);
+
+        double[] enc = new double[encoder.numBoundVars()];
+        double[] dec = new double[decoder.numBoundVars()];
+        double[] hor = new double[hvFold.numBoundVars()];
+        double[] ver = new double[hvFold.numBoundVars()];
+        double[] sim = new double[simple.numBoundVars()];
+
+        MAdaGrad grad = new MAdaGrad(new double[][] { enc, hor, ver, dec, sim }, 0.002, 0.9, 0.999);
+
+        encoder.init(enc);
+        decoder.init(dec);
+        hvFold.init(hor);
+        hvFold.init(ver);
+        simple.init(sim);
+
+        int batch = 6;
 
         try (PrintWriter out = new PrintWriter("result.txt")) {
+            for (int epoch = 1; epoch < 100; epoch++) {
+                double trainS = 0, trainC = 0, cntTrain = 0;
 
-            for (int iter = 0; iter < 100000; iter++) {
-                for (int batch = 0; batch < batchs; batch++) {
-                    Dataset dataset = datasets.get(random.nextInt(numData));
-                    double[] rmf = extractor.apply(dataset);
-                    double[] nmf = new double[numMF];
+                Collections.shuffle(train);
+                AtomicInteger trainPointer = new AtomicInteger(0);
 
-                    for (int i = 0; i < numMF; i++) {
-                        nmf[i] = (rmf[i] - min[i]) / (max[i] - min[i]) * 2 - 1;
+                while (trainPointer.get() < train.size()) {
+                    double[][][] delta = new double[batch][][];
+                    double[] diffS = new double[batch];
+                    double[] diffC = new double[batch];
+
+                    Arrays.fill(diffS, Double.NaN);
+                    Arrays.fill(diffC, Double.NaN);
+
+                    Thread[] thread = new Thread[batch];
+                    for (int tid = 0; tid < batch; tid++) {
+                        final int did = tid;
+
+                        thread[tid] = new Thread() {
+                            @Override
+                            public void run() {
+                                Dataset dataset = null;
+                                synchronized (train) {
+                                    if (trainPointer.get() < train.size()) {
+                                        dataset = train.get(trainPointer.getAndIncrement());
+                                    }
+                                }
+                                if (dataset == null) {
+                                    return;
+                                }
+
+                                double[] rmf = extractor.apply(dataset);
+                                double[] nmf = new double[numMF];
+
+                                for (int i = 0; i < numMF; i++) {
+                                    nmf[i] = (rmf[i] - min[i]) / (max[i] - min[i]) * 2 - 1;
+                                }
+
+                                Result<Pair<double[], double[]>, double[]> sp = simple.result(nmf, sim);
+
+                                double[] ys = sp.value();
+                                double ty = knnScore.applyAsDouble(dataset) * 2 - 1;
+                                double diffs = ys[0] - ty;
+
+                                synchronized (diffS) {
+                                    diffS[did] = diffs;
+                                }
+
+                                double[] dys = { diffs };
+
+                                double[] deltas = sp.apply(dys).getRight();
+
+                                double[][][] obj = new double[numObjects][numFeatures][2];
+
+                                for (int oid = 0; oid < numObjects; oid++) {
+                                    for (int fid = 0; fid < numFeatures; fid++) {
+                                        obj[oid][fid][0] = dataset.data[oid][fid];
+                                        obj[oid][fid][1] = dataset.labels[oid];
+                                    }
+                                }
+
+                                Result<Pair<double[][][], double[][]>, double[]> cp = net.result(obj, enc, hor, ver, dec);
+
+                                double[] yc = cp.value();
+                                double diffc = yc[0] - ty;
+
+                                synchronized (diffC) {
+                                    diffC[did] = diffc;
+                                }
+
+                                double[] dyc = { diffc };
+
+                                double[][] delta = Arrays.copyOf(cp.derivative().apply(dyc).getRight(), 5);
+                                delta[4] = deltas;
+
+                            };
+                        };
+                        thread[tid].start();
                     }
 
-                    Result<Pair<double[], double[]>, double[]> sp = simple.result(nmf, sim);
+                    for (int tid = 0; tid < batch; tid++) {
+                        thread[tid].join();
+                    }
 
-                    double[] ys = sp.value();
-                    double ty = knnScore.applyAsDouble(dataset) * 2 - 1;
-                    double diffs = ys[0] - ty;
-                    double[] dys = { diffs };
-
-                    double[] deltas = sp.apply(dys).getRight();
-                    sGrad.accept(deltas);
-
-                    mseS = alpha * mseS + (1 - alpha) * diffs * diffs;
-
-                    double[][][] obj = new double[numObjects][numFeatures][2];
-
-                    for (int oid = 0; oid < numObjects; oid++) {
-                        for (int fid = 0; fid < numFeatures; fid++) {
-                            obj[oid][fid][0] = dataset.data[oid][fid];
-                            obj[oid][fid][1] = dataset.labels[oid];
+                    for (int tid = 0; tid < batch; tid++) {
+                        if (delta[tid] != null && Double.isFinite(diffS[tid]) && Double.isFinite(diffC[tid])) {
+                            trainS += diffS[tid] * diffS[tid];
+                            trainC += diffC[tid] * diffC[tid];
+                            cntTrain += 1;
+                            grad.accept(delta[tid]);
                         }
                     }
+                }
+                String trainResult = String.format(Locale.ENGLISH, "%d train %.4f %.4f", epoch, Math.sqrt(trainS / cntTrain), Math.sqrt(trainC / cntTrain));
+                System.out.println(trainResult);
+                out.println(trainResult);
+                out.flush();
 
-                    Result<Pair<double[][][], double[][]>, double[]> cp = net.result(obj, enc, hor, ver, dec);
+                double testS = 0, testC = 0, cntTest = 0;
 
-                    double[] yc = cp.value();
-                    double diffc = yc[0] - ty;
+                AtomicInteger testPointer = new AtomicInteger(0);
 
-                    mseC = alpha * mseC + (1 - alpha) * diffc * diffc;
+                while (testPointer.get() < test.size()) {
+                    double[] diffS = new double[batch];
+                    double[] diffC = new double[batch];
 
-                    double[] dyc = { diffc };
+                    Arrays.fill(diffS, Double.NaN);
+                    Arrays.fill(diffC, Double.NaN);
 
-                    Pair<double[][][], double[][]> delta = cp.derivative().apply(dyc);
-                    cGrad.accept(delta.getRight());
+                    Thread[] thread = new Thread[batch];
+                    for (int tid = 0; tid < batch; tid++) {
+                        final int did = tid;
+
+                        thread[tid] = new Thread() {
+                            @Override
+                            public void run() {
+                                Dataset dataset = null;
+                                synchronized (test) {
+                                    if (testPointer.get() < test.size()) {
+                                        dataset = test.get(testPointer.getAndIncrement());
+                                    }
+                                }
+                                if (dataset == null) {
+                                    return;
+                                }
+
+                                double[] rmf = extractor.apply(dataset);
+                                double[] nmf = new double[numMF];
+
+                                for (int i = 0; i < numMF; i++) {
+                                    nmf[i] = (rmf[i] - min[i]) / (max[i] - min[i]) * 2 - 1;
+                                }
+
+                                Result<Pair<double[], double[]>, double[]> sp = simple.result(nmf, sim);
+
+                                double[] ys = sp.value();
+                                double ty = knnScore.applyAsDouble(dataset) * 2 - 1;
+                                double diffs = ys[0] - ty;
+
+                                synchronized (diffS) {
+                                    diffS[did] = diffs;
+                                }
+
+                                double[][][] obj = new double[numObjects][numFeatures][2];
+
+                                for (int oid = 0; oid < numObjects; oid++) {
+                                    for (int fid = 0; fid < numFeatures; fid++) {
+                                        obj[oid][fid][0] = dataset.data[oid][fid];
+                                        obj[oid][fid][1] = dataset.labels[oid];
+                                    }
+                                }
+
+                                Result<Pair<double[][][], double[][]>, double[]> cp = net.result(obj, enc, hor, ver, dec);
+
+                                double[] yc = cp.value();
+                                double diffc = yc[0] - ty;
+
+                                synchronized (diffC) {
+                                    diffC[did] = diffc;
+                                }
+                            };
+                        };
+                        thread[tid].start();
+                    }
+
+                    for (int tid = 0; tid < batch; tid++) {
+                        thread[tid].join();
+                    }
+
+                    for (int tid = 0; tid < batch; tid++) {
+                        if (Double.isFinite(diffS[tid]) && Double.isFinite(diffC[tid])) {
+                            testS += diffS[tid] * diffS[tid];
+                            testC += diffC[tid] * diffC[tid];
+                            cntTest += 1;
+                        }
+                    }
                 }
 
-                String string = String.format(Locale.ENGLISH, "%d %.4f %.4f", iter, Math.sqrt(mseS), Math.sqrt(mseC));
-
-                System.out.println(string);
-                out.println(string);
+                String testResult = String.format(Locale.ENGLISH, "%d test %.4f %.4f", epoch, Math.sqrt(testS / cntTest), Math.sqrt(testC / cntTest));
+                System.out.println(testResult);
+                out.println(testResult);
                 out.flush();
 
             }
         }
-
     }
 }

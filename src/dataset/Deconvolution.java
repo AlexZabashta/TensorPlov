@@ -45,9 +45,11 @@ public class Deconvolution implements MultiVarDiffStruct<double[][][], double[]>
                 double[] src = dxe.getRight();
                 double[] dst = horizontal ? sdh : sdv;
 
+                double scale = weight();
                 for (int i = 0; i < src.length; i++) {
-                    dst[i] += src[i];
+                    dst[i] += src[i] * scale;
                 }
+                
                 delta = dxe.getLeft();
                 error = (first.error + secnd.error) / 2;
 
