@@ -1,3 +1,5 @@
+package test.meta;
+
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -102,11 +104,10 @@ public class TestNN {
 
         System.out.println(numData);
         HVFold hvFold = new HVFold();
-        Convolution convolution = new SymConvolution(40, hvFold, hvFold);
+        Convolution convolution = new SymConvolution(29, hvFold, hvFold);
 
         Encoder encoder = new Encoder();
         Decoder decoder = new Decoder();
-        Simple simple = new Simple();
 
         MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(true, encoder));
         MultiVarDiffStruct<double[], double[]> mdecoder = MultiVarDiffStruct.convert(decoder);
@@ -116,15 +117,15 @@ public class TestNN {
         double[] dec = new double[decoder.numBoundVars()];
         double[] hor = new double[hvFold.numBoundVars()];
         double[] ver = new double[hvFold.numBoundVars()];
-        double[] sim = new double[simple.numBoundVars()];
+        double[] sim = new double[decoder.numBoundVars()];
 
-        MAdaGrad grad = new MAdaGrad(new double[][] { enc, hor, ver, dec, sim }, 0.002, 0.9, 0.999);
+        MAdaGrad grad = new MAdaGrad(new double[][] { enc, hor, ver, dec, sim }, 0.0003, 0.9, 0.999);
 
         encoder.init(enc);
         decoder.init(dec);
         hvFold.init(hor);
         hvFold.init(ver);
-        simple.init(sim);
+        decoder.init(sim);
 
         int batch = 6;
 
@@ -136,7 +137,7 @@ public class TestNN {
                 AtomicInteger trainPointer = new AtomicInteger(0);
 
                 while (trainPointer.get() < train.size()) {
-                    double[][][] delta = new double[batch][][];
+                    double[][][] deltab = new double[batch][][];
                     double[] diffS = new double[batch];
                     double[] diffC = new double[batch];
 
@@ -167,10 +168,10 @@ public class TestNN {
                                     nmf[i] = (rmf[i] - min[i]) / (max[i] - min[i]) * 2 - 1;
                                 }
 
-                                Result<Pair<double[], double[]>, double[]> sp = simple.result(nmf, sim);
+                                Result<Pair<double[], double[]>, double[]> sp = decoder.result(nmf, sim);
 
                                 double[] ys = sp.value();
-                                double ty = knnScore.applyAsDouble(dataset) * 2 - 1;
+                                double ty = knnScore.applyAsDouble(dataset) * 2 - 0.8589644085915296;
                                 double diffs = ys[0] - ty;
 
                                 synchronized (diffS) {
@@ -204,6 +205,10 @@ public class TestNN {
                                 double[][] delta = Arrays.copyOf(cp.derivative().apply(dyc).getRight(), 5);
                                 delta[4] = deltas;
 
+                                synchronized (deltab) {
+                                    deltab[did] = delta;
+                                }
+
                             };
                         };
                         thread[tid].start();
@@ -214,13 +219,16 @@ public class TestNN {
                     }
 
                     for (int tid = 0; tid < batch; tid++) {
-                        if (delta[tid] != null && Double.isFinite(diffS[tid]) && Double.isFinite(diffC[tid])) {
+                        if (deltab[tid] != null && Double.isFinite(diffS[tid]) && Double.isFinite(diffC[tid])) {
                             trainS += diffS[tid] * diffS[tid];
                             trainC += diffC[tid] * diffC[tid];
                             cntTrain += 1;
-                            grad.accept(delta[tid]);
+                            grad.accept(deltab[tid]);
                         }
                     }
+
+                    System.out.printf(Locale.ENGLISH, "%d train %.4f %.4f%n", epoch, Math.sqrt(trainS / cntTrain), Math.sqrt(trainC / cntTrain));
+
                 }
                 String trainResult = String.format(Locale.ENGLISH, "%d train %.4f %.4f", epoch, Math.sqrt(trainS / cntTrain), Math.sqrt(trainC / cntTrain));
                 System.out.println(trainResult);
@@ -262,10 +270,10 @@ public class TestNN {
                                     nmf[i] = (rmf[i] - min[i]) / (max[i] - min[i]) * 2 - 1;
                                 }
 
-                                Result<Pair<double[], double[]>, double[]> sp = simple.result(nmf, sim);
+                                Result<Pair<double[], double[]>, double[]> sp = decoder.result(nmf, sim);
 
                                 double[] ys = sp.value();
-                                double ty = knnScore.applyAsDouble(dataset) * 2 - 1;
+                                double ty = knnScore.applyAsDouble(dataset) * 2 - 0.8589644085915296;
                                 double diffs = ys[0] - ty;
 
                                 synchronized (diffS) {

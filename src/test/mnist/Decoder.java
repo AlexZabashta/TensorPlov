@@ -4,102 +4,87 @@ import core.VectorDiffStruct;
 import java.util.Random;
 public class Decoder extends VectorDiffStruct {
     public Decoder() {
-        super(40, 2150, 10, 350, 350);
+        super(64, 2778, 10, 276, 276);
     }
     @Override
     public void init(double[] w) {
         {
             Random random = new Random();
-            for (int i = 40; i < 1240; i++)
-                w[i] = 0.15811388300841897 * random.nextGaussian();
+            for (int i = 0; i < 2048; i++)
+                w[i] = 0.125 * random.nextGaussian();
         }
         {
             Random random = new Random();
-            for (int i = 1300; i < 1900; i++)
-                w[i] = 0.18257418583505536 * random.nextGaussian();
+            for (int i = 2080; i < 2592; i++)
+                w[i] = 0.17677669529663687 * random.nextGaussian();
         }
         {
             Random random = new Random();
-            for (int i = 1940; i < 2140; i++)
-                w[i] = 0.22360679774997896 * random.nextGaussian();
+            for (int i = 2608; i < 2768; i++)
+                w[i] = 0.25 * random.nextGaussian();
         }
     }
     @Override
     public void forward(double[] x, double[] w, double[] y, double[] f) {
         {
-            int xp = 0, sp = 0;
-            for (int yp = 0; yp < 40; yp++)
-                f[yp] += x[xp++] * exp(w[sp++]);
-        }
-        {
-            for (int xp = 0, yp = 40; yp < 80; yp++)
-                f[yp] += f[xp++];
+            for (int xp = 0, yp = 0; yp < 64; yp++)
+                f[yp] += x[xp++];
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 40; j++)
-            for (int k = 0; k < 30; k++)
-                f[i * 30 + k + 80] += f[i * 40 + j + 40] * w[j * 30 + k + 40];
+            for (int j = 0; j < 64; j++)
+            for (int k = 0; k < 32; k++)
+                f[i * 32 + k + 64] += f[i * 64 + j + 0] * w[j * 32 + k + 0];
         }
         {
-            int ap = 80, bp = 1240;
-            for (int cp = 110; cp < 140; cp++)
+            int ap = 64, bp = 2048;
+            for (int cp = 96; cp < 128; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
         {
-            int xp = 110, yp = 140;
-            for (int i = 0; i < 30; i++, xp++) {
+            int xp = 96, yp = 128;
+            for (int i = 0; i < 32; i++, xp++) {
                 f[yp++] += max(0.001 * f[xp], f[xp]);
             }
         }
         {
-            int xp = 140, mp = 1270;
-            for (int yp = 170; yp < 200; yp++)
-                f[yp] += (f[xp++] - w[mp++]);
-        }
-        {
-            for (int xp = 170, yp = 200; yp < 230; yp++)
+            for (int xp = 128, yp = 160; yp < 192; yp++)
                 f[yp] += f[xp++];
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 30; j++)
-            for (int k = 0; k < 20; k++)
-                f[i * 20 + k + 230] += f[i * 30 + j + 200] * w[j * 20 + k + 1300];
+            for (int j = 0; j < 32; j++)
+            for (int k = 0; k < 16; k++)
+                f[i * 16 + k + 192] += f[i * 32 + j + 160] * w[j * 16 + k + 2080];
         }
         {
-            int ap = 230, bp = 1900;
-            for (int cp = 250; cp < 270; cp++)
+            int ap = 192, bp = 2592;
+            for (int cp = 208; cp < 224; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
         {
-            int xp = 250, yp = 270;
-            for (int i = 0; i < 20; i++, xp++) {
+            int xp = 208, yp = 224;
+            for (int i = 0; i < 16; i++, xp++) {
                 f[yp++] += max(0.001 * f[xp], f[xp]);
             }
         }
         {
-            int xp = 270, mp = 1920;
-            for (int yp = 290; yp < 310; yp++)
-                f[yp] += (f[xp++] - w[mp++]);
-        }
-        {
-            for (int xp = 290, yp = 310; yp < 330; yp++)
+            for (int xp = 224, yp = 240; yp < 256; yp++)
                 f[yp] += f[xp++];
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 20; j++)
+            for (int j = 0; j < 16; j++)
             for (int k = 0; k < 10; k++)
-                f[i * 10 + k + 330] += f[i * 20 + j + 310] * w[j * 10 + k + 1940];
+                f[i * 10 + k + 256] += f[i * 16 + j + 240] * w[j * 10 + k + 2608];
         }
         {
-            int ap = 330, bp = 2140;
-            for (int cp = 340; cp < 350; cp++)
+            int ap = 256, bp = 2768;
+            for (int cp = 266; cp < 276; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
         {
-            int xp = 340, yp = 0;
+            int xp = 266, yp = 0;
             for (int i = 0; i < 10; i++, xp++) {
                 y[yp++] += tanh(f[xp]);
             }
@@ -108,13 +93,13 @@ public class Decoder extends VectorDiffStruct {
     @Override
     public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
         {
-            int xp = 340, yp = 0, dxp = 0, dyp = 0;
+            int xp = 266, yp = 0, dxp = 0, dyp = 0;
             for (int i = 0; i < 10; i++, xp++, yp++) {
                 b[dxp++] += dy[dyp++] * (1 - y[yp] * y[yp]);
             }
         }
         {
-            int dap = 10, dbp = 2140;
+            int dap = 10, dbp = 2768;
             for (int dcp = 0; dcp < 10; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
@@ -122,99 +107,77 @@ public class Decoder extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 20; j++)
+            for (int j = 0; j < 16; j++)
             for (int k = 0; k < 10; k++) {
-                b[i * 20 + j + 20] += b[i * 10 + k + 10] * w[j * 10 + k + 1940];
-                dw[j * 10 + k + 1940] += f[i * 20 + j + 310] * b[i * 10 + k + 10];
+                b[i * 16 + j + 20] += b[i * 10 + k + 10] * w[j * 10 + k + 2608];
+                dw[j * 10 + k + 2608] += f[i * 16 + j + 240] * b[i * 10 + k + 10];
             }
         }
         {
             double sum = 0.0000001;
-            for (int i = 20; i < 40; i++)
+            for (int i = 20; i < 36; i++)
                  sum += b[i] * b[i];
             double inv = 1 / sqrt(sum);
-            for (int dxp = 40, dyp = 20; dxp < 60; dxp++)
+            for (int dxp = 36, dyp = 20; dxp < 52; dxp++)
                 b[dxp] += b[dyp++] * inv;
         }
         {
-            int xp = 270, mp = 1920, dmp = 1920, dyp = 40;
-            for (int dxp = 60; dxp < 80; dxp++) {
-                dw[dmp++] += 0.01 * (w[mp++] - f[xp++]);
-                b[dxp] += b[dyp++];
-            }
-        }
-        {
-            int xp = 250, yp = 270, dxp = 80, dyp = 60;
-            for (int i = 0; i < 20; i++, xp++, yp++) {
+            int xp = 208, yp = 224, dxp = 52, dyp = 36;
+            for (int i = 0; i < 16; i++, xp++, yp++) {
                 b[dxp++] += b[dyp++] * ((f[xp] < 0) ? 0.001 : 1);
             }
         }
         {
-            int dap = 100, dbp = 1900;
-            for (int dcp = 80; dcp < 100; dcp++) {
+            int dap = 68, dbp = 2592;
+            for (int dcp = 52; dcp < 68; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
             }
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 30; j++)
-            for (int k = 0; k < 20; k++) {
-                b[i * 30 + j + 120] += b[i * 20 + k + 100] * w[j * 20 + k + 1300];
-                dw[j * 20 + k + 1300] += f[i * 30 + j + 200] * b[i * 20 + k + 100];
+            for (int j = 0; j < 32; j++)
+            for (int k = 0; k < 16; k++) {
+                b[i * 32 + j + 84] += b[i * 16 + k + 68] * w[j * 16 + k + 2080];
+                dw[j * 16 + k + 2080] += f[i * 32 + j + 160] * b[i * 16 + k + 68];
             }
         }
         {
             double sum = 0.0000001;
-            for (int i = 120; i < 150; i++)
+            for (int i = 84; i < 116; i++)
                  sum += b[i] * b[i];
             double inv = 1 / sqrt(sum);
-            for (int dxp = 150, dyp = 120; dxp < 180; dxp++)
+            for (int dxp = 116, dyp = 84; dxp < 148; dxp++)
                 b[dxp] += b[dyp++] * inv;
         }
         {
-            int xp = 140, mp = 1270, dmp = 1270, dyp = 150;
-            for (int dxp = 180; dxp < 210; dxp++) {
-                dw[dmp++] += 0.01 * (w[mp++] - f[xp++]);
-                b[dxp] += b[dyp++];
-            }
-        }
-        {
-            int xp = 110, yp = 140, dxp = 210, dyp = 180;
-            for (int i = 0; i < 30; i++, xp++, yp++) {
+            int xp = 96, yp = 128, dxp = 148, dyp = 116;
+            for (int i = 0; i < 32; i++, xp++, yp++) {
                 b[dxp++] += b[dyp++] * ((f[xp] < 0) ? 0.001 : 1);
             }
         }
         {
-            int dap = 240, dbp = 1240;
-            for (int dcp = 210; dcp < 240; dcp++) {
+            int dap = 180, dbp = 2048;
+            for (int dcp = 148; dcp < 180; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
             }
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 40; j++)
-            for (int k = 0; k < 30; k++) {
-                b[i * 40 + j + 270] += b[i * 30 + k + 240] * w[j * 30 + k + 40];
-                dw[j * 30 + k + 40] += f[i * 40 + j + 40] * b[i * 30 + k + 240];
+            for (int j = 0; j < 64; j++)
+            for (int k = 0; k < 32; k++) {
+                b[i * 64 + j + 212] += b[i * 32 + k + 180] * w[j * 32 + k + 0];
+                dw[j * 32 + k + 0] += f[i * 64 + j + 0] * b[i * 32 + k + 180];
             }
         }
         {
             double sum = 0.0000001;
-            for (int i = 270; i < 310; i++)
+            for (int i = 212; i < 276; i++)
                  sum += b[i] * b[i];
             double inv = 1 / sqrt(sum);
-            for (int dxp = 310, dyp = 270; dxp < 350; dxp++)
-                b[dxp] += b[dyp++] * inv;
-        }
-        {
-            int sp = 0, dxp = 0, dsp = 0, dyp = 310;
-            for (int yp = 0; yp < 40; yp++) {
-                double sq = f[yp] * f[yp];
-                dw[dsp++] += 0.01 * (sq * (sq - 1));
-                dx[dxp++] += b[dyp++] * exp(w[sp++]);
-            }
+            for (int dxp = 0, dyp = 212; dxp < 64; dxp++)
+                dx[dxp] += b[dyp++] * inv;
         }
     }
 }

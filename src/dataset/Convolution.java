@@ -1,5 +1,6 @@
 package dataset;
 
+import java.util.Locale;
 import java.util.function.Function;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -44,6 +45,16 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
             if (normV > 0) {
                 normalize(dv, 1.0 / normV);
             }
+
+            // for (int i = 0; i < 20; i++) {
+            // System.out.printf(Locale.ENGLISH, "%.9f ", dh[i * 833]);
+            // }
+            // System.out.println();
+            // for (int i = 0; i < 20; i++) {
+            // System.out.printf(Locale.ENGLISH, "%.9f ", dv[i * 833]);
+            // }
+            // System.out.println();
+            // System.out.println();
 
             return Pair.of(dx, new double[][] { dh, dv });
         }
@@ -130,7 +141,7 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
         @Override
         double[] backward(double[] dy, double[] sdh, double[] sdv) {
             Pair<double[], double[]> dxh = derivative.apply(dy);
-            addWithWeight(sdh, dxh.getRight());
+            addWithWeight(dxh.getRight(), sdh);
             return dxh.getLeft();
         }
     }
@@ -143,7 +154,7 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
         @Override
         double[] backward(double[] dy, double[] sdh, double[] sdv) {
             Pair<double[], double[]> dxv = derivative.apply(dy);
-            addWithWeight(sdv, dxv.getRight());
+            addWithWeight(dxv.getRight(), sdv);
             return dxv.getLeft();
         }
     }

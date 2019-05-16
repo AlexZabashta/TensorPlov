@@ -16,9 +16,11 @@ import javax.swing.JLabel;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import core.MultiVarDiffStruct;
+import core.ParallelVDiffStruct;
+import core.Pipe;
 import core.Result;
 import dataset.Convolution;
-import dataset.FullConvolution;
 import dataset.ImgConvolution;
 import grad.MAdaGrad;
 
@@ -146,24 +148,26 @@ public class TestICN extends JFrame {
             }
 
             HVFold hvFold = new HVFold();
-            Convolution convolution = new ImgConvolution(40, hvFold, hvFold);
+            Convolution convolution = new ImgConvolution(64, hvFold, hvFold);
 
             Encoder encoder = new Encoder();
             Decoder decoder = new Decoder();
 
-            FullConvolution net = new FullConvolution(9, encoder, convolution, decoder, 10);
+            MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(true, encoder));
+            MultiVarDiffStruct<double[], double[]> mdecoder = MultiVarDiffStruct.convert(decoder);
+            Pipe<double[][][], ?, double[]> net = Pipe.of(pencoder, convolution, mdecoder);
 
             double[] enc = new double[encoder.numBoundVars()];
             double[] dec = new double[decoder.numBoundVars()];
             double[] hor = new double[hvFold.numBoundVars()];
             double[] ver = new double[hvFold.numBoundVars()];
 
+            MAdaGrad grad = new MAdaGrad(new double[][] { enc, hor, ver, dec }, 0.002, 0.9, 0.999);
+
             encoder.init(enc);
             decoder.init(dec);
             hvFold.init(hor);
             hvFold.init(ver);
-
-            MAdaGrad grad = new MAdaGrad(new double[][] { enc, hor, ver, dec }, 0.1, 0.9, 0.99);
 
             int batch = 20;
 
@@ -235,19 +239,19 @@ public class TestICN extends JFrame {
                 }
                 if (iter % 40 == 0) {
                     for (int i = 0; i < 20; i++) {
-                        System.out.printf(Locale.ENGLISH, "%7.3f ", enc[i * 70]);
+                        System.out.printf(Locale.ENGLISH, "%7.3f ", enc[i * 121]);
                     }
                     System.out.println();
                     for (int i = 0; i < 20; i++) {
-                        System.out.printf(Locale.ENGLISH, "%7.3f ", hor[i * 250]);
+                        System.out.printf(Locale.ENGLISH, "%7.3f ", hor[i * 833]);
                     }
                     System.out.println();
                     for (int i = 0; i < 20; i++) {
-                        System.out.printf(Locale.ENGLISH, "%7.3f ", ver[i * 250]);
+                        System.out.printf(Locale.ENGLISH, "%7.3f ", ver[i * 833]);
                     }
                     System.out.println();
                     for (int i = 0; i < 20; i++) {
-                        System.out.printf(Locale.ENGLISH, "%7.3f ", dec[i * 107]);
+                        System.out.printf(Locale.ENGLISH, "%7.3f ", dec[i * 138]);
                     }
                     System.out.println();
                 }

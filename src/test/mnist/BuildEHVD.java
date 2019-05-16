@@ -1,3 +1,5 @@
+package test.mnist;
+
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.List;
@@ -21,9 +23,8 @@ public class BuildEHVD {
     }
 
     public static void main(String[] args) throws FileNotFoundException {
-        buildAndSave("Encoder", 2, 23, 40);
-        buildAndSave("HVFold", 80, 60, 40);
-        buildAndSave("Decoder", 40, 30, 20, 1);
-        buildAndSave("Simple", 29, 20, 15, 10, 1);
+        buildAndSave("Encoder", 9, 32, 64);
+        buildAndSave("HVFold", 128, 86, 64);
+        buildAndSave("Decoder", 64, 32, 16, 10);
     }
 }
