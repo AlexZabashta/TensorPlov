@@ -1,4 +1,4 @@
-package test.meta;
+package test.best;
 import  static java.lang.Math.*;
 import core.VectorDiffStruct;
 import java.util.Random;

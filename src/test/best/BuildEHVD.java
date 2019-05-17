@@ -1,4 +1,4 @@
-package test.meta;
+package test.best;
 
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -25,7 +25,7 @@ public class BuildEHVD {
     public static void main(String[] args) throws FileNotFoundException {
         buildAndSave("Encoder", false, 2, 16, 32, 64);
         buildAndSave("HVFold", false, 128, 96, 64);
-        buildAndSave("Decoder", true, 64, 29, 20, 15, 10, 1);
-        buildAndSave("Simple", true, 29, 20, 15, 10, 1);
+        buildAndSave("Decoder", false, 64, 29, 20, 15, 3);
+        buildAndSave("Simple", false, 29, 20, 15, 3);
     }
 }

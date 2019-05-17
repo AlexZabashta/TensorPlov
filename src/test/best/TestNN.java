@@ -1,4 +1,4 @@
-package test.meta;
+package test.best;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -25,6 +26,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 
 import clsf.Dataset;
+import clsf.WekaConverter;
 import core.MultiVarDiffStruct;
 import core.ParallelVDiffStruct;
 import core.Pipe;
@@ -35,12 +37,57 @@ import grad.MAdaGrad;
 import grad.MSGD;
 import mfextraction.CMFExtractor;
 import mfextraction.KNNLandMark;
+import weka.classifiers.Evaluation;
+import weka.classifiers.functions.SMO;
+import weka.classifiers.lazy.IBk;
+import weka.classifiers.trees.J48;
+import weka.core.Instances;
 
 public class TestNN {
 
     final CMFExtractor extractor = new CMFExtractor();
     final int numMF = extractor.length();
-    final ToDoubleFunction<Dataset> knnScore = new KNNLandMark();
+    final ToDoubleFunction<Dataset> knnScore = new ToDoubleFunction<Dataset>() {
+        @Override
+        public double applyAsDouble(Dataset dataset) {
+            try {
+                Instances instances = WekaConverter.convert(dataset);
+                Evaluation evaluation = new Evaluation(instances);
+                evaluation.crossValidateModel(new IBk(), instances, 8, new Random(42));
+                return evaluation.weightedFMeasure();
+            } catch (Exception e) {
+                return 0;
+            }
+        }
+    };
+
+    final ToDoubleFunction<Dataset> svmScore = new ToDoubleFunction<Dataset>() {
+        @Override
+        public double applyAsDouble(Dataset dataset) {
+            try {
+                Instances instances = WekaConverter.convert(dataset);
+                Evaluation evaluation = new Evaluation(instances);
+                evaluation.crossValidateModel(new SMO(), instances, 8, new Random(42));
+                return evaluation.weightedFMeasure();
+            } catch (Exception e) {
+                return 0;
+            }
+        }
+    };
+
+    final ToDoubleFunction<Dataset> rfrScore = new ToDoubleFunction<Dataset>() {
+        @Override
+        public double applyAsDouble(Dataset dataset) {
+            try {
+                Instances instances = WekaConverter.convert(dataset);
+                Evaluation evaluation = new Evaluation(instances);
+                evaluation.crossValidateModel(new J48(), instances, 8, new Random(42));
+                return evaluation.weightedFMeasure();
+            } catch (Exception e) {
+                return 0;
+            }
+        }
+    };
 
     final double[] min = new double[numMF];
     final double[] max = new double[numMF];
@@ -84,11 +131,11 @@ public class TestNN {
     }
 
     class PredictResult {
-        final double ty;
+        final double[] ty;
         final Result<Pair<double[], double[]>, double[]> sp;
         final Result<Pair<double[][][], double[][]>, double[]> cp;
 
-        public PredictResult(double ty, Result<Pair<double[], double[]>, double[]> sp, Result<Pair<double[][][], double[][]>, double[]> cp) {
+        public PredictResult(double[] ty, Result<Pair<double[], double[]>, double[]> sp, Result<Pair<double[][][], double[][]>, double[]> cp) {
             this.ty = ty;
             this.sp = sp;
             this.cp = cp;
@@ -96,17 +143,29 @@ public class TestNN {
 
     }
 
-    class Forward implements Callable<PredictResult> {
+    class Predict implements Callable<PredictResult> {
 
         final Dataset dataset;
 
-        public Forward(Dataset dataset) {
+        public Predict(Dataset dataset) {
             this.dataset = dataset;
         }
 
         @Override
         public PredictResult call() throws Exception {
-            double ty = knnScore.applyAsDouble(dataset) * 2 - 0.8589644085915296;
+            double[] score = { knnScore.applyAsDouble(dataset), svmScore.applyAsDouble(dataset), rfrScore.applyAsDouble(dataset) };
+            double maxScore = Double.NEGATIVE_INFINITY;
+            for (double val : score) {
+                maxScore = Math.max(maxScore, val);
+            }
+
+            for (int i = 0; i < 3; i++) {
+                if (score[i] >= maxScore - 0.03) {
+                    score[i] = +1;
+                } else {
+                    score[i] = -1;
+                }
+            }
 
             double[] rmf = extractor.apply(dataset);
             double[] nmf = new double[numMF];
@@ -124,7 +183,7 @@ public class TestNN {
             }
             Result<Pair<double[][][], double[][]>, double[]> cp = net.result(obj, enc, hor, ver, dec);
 
-            return new PredictResult(ty, sp, cp);
+            return new PredictResult(score, sp, cp);
         }
     }
 
@@ -202,7 +261,7 @@ public class TestNN {
                 while (trainPointer < train.size()) {
                     List<Future<PredictResult>> results = new ArrayList<>();
                     for (int i = 0; trainPointer < train.size() && i < batch; i++) {
-                        results.add(executor.submit(new Forward(train.get(trainPointer++))));
+                        results.add(executor.submit(new Predict(train.get(trainPointer++))));
                     }
 
                     List<Future<double[][]>> fdeltas = new ArrayList<>();
@@ -210,22 +269,26 @@ public class TestNN {
                     for (Future<PredictResult> future : results) {
                         PredictResult result = future.get();
 
-                        double diffS = result.sp.value()[0] - result.ty;
-                        double diffC = result.cp.value()[0] - result.ty;
+                        double[] sy = result.sp.value();
+                        double[] cy = result.cp.value();
 
-                        trainS += diffS * diffS;
-                        trainC += diffC * diffC;
+                        double[] dys = new double[3];
+                        double[] dyc = new double[3];
+
+                        for (int i = 0; i < 3; i++) {
+                            dys[i] = sy[i] - result.ty[i];
+                            dyc[i] = cy[i] - result.ty[i];
+                        }
+
+                        trainS += (dys[0] * dys[0] + dys[1] * dys[1] + dys[2] * dys[2]) / 3;
+                        trainC += (dyc[0] * dyc[0] + dyc[1] * dyc[1] + dyc[2] * dyc[2]) / 3;
 
                         fdeltas.add(executor.submit(new Callable<double[][]>() {
 
                             @Override
                             public double[][] call() throws Exception {
-                                double[] dyc = { diffC };
                                 double[][] delta = Arrays.copyOf(result.cp.apply(dyc).getRight(), 5);
-
-                                double[] dys = { diffS };
                                 delta[4] = result.sp.apply(dys).getRight();
-
                                 return delta;
                             }
                         }));
@@ -253,10 +316,19 @@ public class TestNN {
                     results.add(executor.submit(new Callable<double[]>() {
                         @Override
                         public double[] call() throws Exception {
-                            PredictResult result = (new Forward(dataset)).call();
-                            double diffS = result.sp.value()[0] - result.ty;
-                            double diffC = result.cp.value()[0] - result.ty;
-                            return new double[] { diffS, diffC };
+                            PredictResult result = (new Predict(dataset)).call();
+                            double[] sy = result.sp.value();
+                            double[] cy = result.cp.value();
+
+                            double[] dys = new double[3];
+                            double[] dyc = new double[3];
+
+                            for (int i = 0; i < 3; i++) {
+                                dys[i] = sy[i] - result.ty[i];
+                                dyc[i] = cy[i] - result.ty[i];
+                            }
+
+                            return new double[] { (dys[0] * dys[0] + dys[1] * dys[1] + dys[2] * dys[2]) / 3, (dyc[0] * dyc[0] + dyc[1] * dyc[1] + dyc[2] * dyc[2]) / 3 };
                         }
                     }));
                 }
@@ -265,12 +337,8 @@ public class TestNN {
 
                 for (Future<double[]> future : results) {
                     double[] result = future.get();
-
-                    double diffS = result[0];
-                    double diffC = result[1];
-
-                    testS += diffS * diffS;
-                    testC += diffC * diffC;
+                    testS += result[0];
+                    testC += result[1];
                 }
 
                 String testResult = String.format(Locale.ENGLISH, "%d test %.4f %.4f", epoch, Math.sqrt(testS / test.size()), Math.sqrt(testC / test.size()));

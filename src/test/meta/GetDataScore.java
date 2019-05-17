@@ -3,30 +3,17 @@ package test.meta;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.ToDoubleFunction;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.tuple.Pair;
 
 import clsf.Dataset;
-import core.MultiVarDiffStruct;
-import core.ParallelVDiffStruct;
-import core.Pipe;
-import core.Result;
-import dataset.Convolution;
-import dataset.SymConvolution;
-import grad.MAdaGrad;
-import mfextraction.CMFExtractor;
 import mfextraction.KNNLandMark;
 
 public class GetDataScore {
@@ -41,9 +28,7 @@ public class GetDataScore {
         final int numObjects = numObjectsPerClass * numClasses;
 
         ToDoubleFunction<Dataset> knnScore = new KNNLandMark();
-
-        double mean = 0;
-        double cnt = 0;
+        List<Dataset> datasets = new ArrayList<>();
 
         for (File datafolder : new File("csv").listFiles()) {
             try {
@@ -68,13 +53,44 @@ public class GetDataScore {
                 }
                 Dataset dataset = new Dataset(datafolder.getName(), true, data, false, labels);
 
-                mean += knnScore.applyAsDouble(dataset) * 2;
-                cnt += 1;
+                datasets.add(dataset);
 
             } catch (IOException exception) {
                 exception.printStackTrace();
             }
         }
-        System.out.println(mean / cnt);
+        Collections.sort(datasets, Comparator.comparing(dataset -> dataset.name));
+
+        List<Dataset> train = new ArrayList<>();
+        List<Dataset> test = new ArrayList<>();
+
+        for (int i = 0; i < datasets.size(); i++) {
+            if (i % 10 == 0) {
+                test.add(datasets.get(i));
+            } else {
+                train.add(datasets.get(i));
+            }
+        }
+
+        double avg = 0;
+
+        for (Dataset dataset : train) {
+            double fscore = knnScore.applyAsDouble(dataset) * 2;
+            avg += fscore;
+        }
+        avg /= train.size();
+        System.out.println(avg);
+
+        double mse = 0;
+
+        for (Dataset dataset : test) {
+            double fscore = knnScore.applyAsDouble(dataset) * 2;
+            double diff = fscore - avg;
+            mse += diff * diff;
+        }
+        mse /= test.size();
+
+        System.out.println(Math.sqrt(mse));
+
     }
 }

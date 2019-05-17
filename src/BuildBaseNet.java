@@ -10,7 +10,7 @@ import tojava.CompilerToSrc;
 public class BuildBaseNet {
 
     public static void buildAndSave(String name, int... sizes) {
-        Node node = Builder.buildLayers(sizes);
+        Node node = Builder.buildLayers(false, sizes);
         List<String> programm = CompilerToSrc.compile(null, name, node.preCompile());
         try (PrintWriter writer = new PrintWriter(name + ".java")) {
             for (String line : programm) {
