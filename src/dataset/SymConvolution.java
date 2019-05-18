@@ -14,7 +14,6 @@ public class SymConvolution extends Convolution {
     @Override
     Result<Pair<double[][][], double[][]>, double[]> result(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
         int curRows = rows, curCols = cols;
-        double normH = 0, normV = 0;
 
         while (curRows > 1 || curCols > 1) {
             double rowCos = -1, colCos = -1;
@@ -92,7 +91,6 @@ public class SymConvolution extends Convolution {
                     Node node = buildNode(true, horzBoundVar, nodes[row][colA], nodes[row][colB]);
                     nodes[row][colA] = node;
                     nodes[row][colB] = nodes[row][curCols];
-                    normH += node.weight();
                 }
             } else {
                 --curRows;
@@ -101,13 +99,12 @@ public class SymConvolution extends Convolution {
                     Node node = buildNode(false, vertBoundVar, nodes[rowA][col], nodes[rowB][col]);
                     nodes[rowA][col] = node;
                     nodes[rowB][col] = nodes[curRows][col];
-                    normV += node.weight();
                 }
             }
         }
 
         Node root = nodes[0][0];
-        return new Result<>(new Memory(root, rows, cols, normH, normV), root.values);
+        return new Result<>(new Memory(root, rows, cols), root.values);
 
     }
 

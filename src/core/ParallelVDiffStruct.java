@@ -40,6 +40,7 @@ public class ParallelVDiffStruct implements VarDiffStruct<double[][][], double[]
             @Override
             public Pair<double[][][], double[]> apply(double[][][] deltaOutput) {
                 double[][][] deltaInput = new double[rows][cols][];
+
                 double[] deltaBounVar = new double[base.numBoundVars()];
 
                 for (int row = 0; row < rows; row++) {
@@ -54,6 +55,7 @@ public class ParallelVDiffStruct implements VarDiffStruct<double[][][], double[]
                                 sum += subOutput[i] * subOutput[i];
                             }
                             double error = Math.sqrt(sum);
+
                             for (int i = 0; i < subInput.length; i++) {
                                 subInput[i] *= error;
                             }

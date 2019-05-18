@@ -1,6 +1,6 @@
 package dataset;
 
-import java.util.Locale;
+import java.util.Random;
 import java.util.function.Function;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -14,14 +14,12 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
     public class Memory implements Function<double[], Pair<double[][][], double[][]>> {
         final Node root;
         final int rows, cols;
-        final double normH, normV;
+        double normH, normV;
 
-        Memory(Node root, int rows, int cols, double normH, double normV) {
+        Memory(Node root, int rows, int cols) {
             this.root = root;
             this.rows = rows;
             this.cols = cols;
-            this.normH = normH;
-            this.normV = normV;
         }
 
         void normalize(double[] array, double scale) {
@@ -36,7 +34,9 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
             double[] dh = new double[horzFold.numBoundVars()];
             double[] dv = new double[vertFold.numBoundVars()];
 
-            root.backward(dy, dx, dh, dv, 0, 0);
+            normH = 0;
+            normV = 0;
+            root.backward(this, dy, dx, dh, dv, 1, 1);
 
             if (normH > 0) {
                 normalize(dh, 1.0 / normH);
@@ -46,16 +46,6 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
                 normalize(dv, 1.0 / normV);
             }
 
-            // for (int i = 0; i < 20; i++) {
-            // System.out.printf(Locale.ENGLISH, "%.9f ", dh[i * 833]);
-            // }
-            // System.out.println();
-            // for (int i = 0; i < 20; i++) {
-            // System.out.printf(Locale.ENGLISH, "%.9f ", dv[i * 833]);
-            // }
-            // System.out.println();
-            // System.out.println();
-
             return Pair.of(dx, new double[][] { dh, dv });
         }
 
@@ -63,36 +53,36 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
 
     abstract class Node {
         final double[] values;
-        final int level;
+        final int size;
 
-        Node(int level, double[] values) {
-            this.level = level;
+        Node(int size, double[] values) {
+            this.size = size;
             this.values = values;
         }
 
-        void backward(double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors) {
-            double sum = 0;
-            for (int i = 0; i < dy.length; i++) {
-                sum += dy[i] * dy[i];
-            }
+        void backward(Memory memory, double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors) {
+            // double sum = 0;
+            // for (int i = 0; i < dy.length; i++) {
+            // sum += dy[i] * dy[i];
+            // }
+            //
+            // double error = Math.sqrt(sum);
+            //
+            // sumErrors += error * weight();
+            // normErrors += weight();
+            //
+            // double norm = 1 / (error + 1e-7);
+            // for (int i = 0; i < dy.length; i++) {
+            // dy[i] *= norm;
+            // }
 
-            double error = Math.sqrt(sum);
-
-            sumErrors += error * weight();
-            normErrors += weight();
-
-            double norm = 1 / (error + 1e-7);
-            for (int i = 0; i < dy.length; i++) {
-                dy[i] *= norm;
-            }
-
-            backwardE(dy, dx, sdh, sdv, sumErrors, normErrors);
+            backwardE(memory, dy, dx, sdh, sdv, sumErrors, normErrors);
         }
 
-        abstract void backwardE(double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors);
+        abstract void backwardE(Memory memory, double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors);
 
         double weight() {
-            return level;
+            return size;
         }
 
     }
@@ -102,24 +92,23 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
         final Function<double[], Pair<double[], double[]>> derivative;
 
         Fold(Node first, Node secnd, Function<double[], Pair<double[], double[]>> derivative, double[] values) {
-            super(Math.max(first.level, secnd.level) + 1, values);
+            super(first.size + secnd.size, values);
             this.first = first;
             this.secnd = secnd;
             this.derivative = derivative;
         }
 
-        void addWithWeight(double[] src, double[] dst) {
-            double scale = weight();
+        void addWithWeight(double[] src, double weight, double[] dst) {
             for (int i = 0; i < src.length; i++) {
-                dst[i] += src[i] * scale;
+                dst[i] += src[i] * weight;
             }
         }
 
-        abstract double[] backward(double[] dy, double[] sdh, double[] sdv);
+        abstract double[] backward(Memory memory, double[] dy, double[] sdh, double[] sdv);
 
         @Override
-        void backwardE(double[] dy, double[][][] dInput, double[] sdh, double[] sdv, double sumErrors, double normErrors) {
-            double[] dx = backward(dy, sdh, sdv);
+        void backwardE(Memory memory, double[] dy, double[][][] dInput, double[] sdh, double[] sdv, double sumErrors, double normErrors) {
+            double[] dx = backward(memory, dy, sdh, sdv);
 
             double[] da = new double[depth];
             double[] db = new double[depth];
@@ -127,8 +116,8 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
             System.arraycopy(dx, 0, da, 0, depth);
             System.arraycopy(dx, depth, db, 0, depth);
 
-            first.backward(da, dInput, sdh, sdv, sumErrors, normErrors);
-            secnd.backward(db, dInput, sdh, sdv, sumErrors, normErrors);
+            first.backward(memory, da, dInput, sdh, sdv, sumErrors, normErrors);
+            secnd.backward(memory, db, dInput, sdh, sdv, sumErrors, normErrors);
         }
 
     }
@@ -139,9 +128,10 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
         }
 
         @Override
-        double[] backward(double[] dy, double[] sdh, double[] sdv) {
+        double[] backward(Memory memory, double[] dy, double[] sdh, double[] sdv) {
             Pair<double[], double[]> dxh = derivative.apply(dy);
-            addWithWeight(dxh.getRight(), sdh);
+            addWithWeight(dxh.getRight(), weight(), sdh);
+            memory.normH += weight();
             return dxh.getLeft();
         }
     }
@@ -152,9 +142,10 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
         }
 
         @Override
-        double[] backward(double[] dy, double[] sdh, double[] sdv) {
+        double[] backward(Memory memory, double[] dy, double[] sdh, double[] sdv) {
             Pair<double[], double[]> dxv = derivative.apply(dy);
-            addWithWeight(dxv.getRight(), sdv);
+            addWithWeight(dxv.getRight(), weight(), sdv);
+            memory.normV += weight();
             return dxv.getLeft();
         }
     }
@@ -169,11 +160,11 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
         }
 
         @Override
-        void backwardE(double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors) {
-            double avgError = sumErrors / normErrors;
-            for (int i = 0; i < dy.length; i++) {
-                dy[i] *= avgError;
-            }
+        void backwardE(Memory memory, double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors) {
+            // double avgError = sumErrors / normErrors;
+            // for (int i = 0; i < dy.length; i++) {
+            // dy[i] *= avgError;
+            // }
             dx[row][col] = dy;
         }
 

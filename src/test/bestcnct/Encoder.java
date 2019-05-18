@@ -1,21 +1,21 @@
-package test.mnist;
+package test.bestcnct;
 import  static java.lang.Math.*;
 import core.VectorDiffStruct;
 import java.util.Random;
-public class Decoder extends VectorDiffStruct {
-    public Decoder() {
-        super(28, 634, 10, 68, 68);
+public class Encoder extends VectorDiffStruct {
+    public Encoder() {
+        super(2, 643, 35, 118, 118);
     }
     @Override
     public void init(double[] w) {
         {
             Random random = new Random();
-            for (int i = 0; i < 448; i++)
-                w[i] = 0.1889822365046136 * random.nextGaussian();
+            for (int i = 0; i < 32; i++)
+                w[i] = 0.7071067811865475 * random.nextGaussian();
         }
         {
             Random random = new Random();
-            for (int i = 464; i < 624; i++)
+            for (int i = 48; i < 608; i++)
                 w[i] = 0.25 * random.nextGaussian();
         }
     }
@@ -23,12 +23,12 @@ public class Decoder extends VectorDiffStruct {
     public void forward(double[] x, double[] w, double[] y, double[] f) {
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 28; j++)
+            for (int j = 0; j < 2; j++)
             for (int k = 0; k < 16; k++)
-                f[i * 16 + k + 0] += x[i * 28 + j + 0] * w[j * 16 + k + 0];
+                f[i * 16 + k + 0] += x[i * 2 + j + 0] * w[j * 16 + k + 0];
         }
         {
-            int ap = 0, bp = 448;
+            int ap = 0, bp = 32;
             for (int cp = 16; cp < 32; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
@@ -41,17 +41,17 @@ public class Decoder extends VectorDiffStruct {
         {
             for (int i = 0; i < 1; i++)
             for (int j = 0; j < 16; j++)
-            for (int k = 0; k < 10; k++)
-                f[i * 10 + k + 48] += f[i * 16 + j + 32] * w[j * 10 + k + 464];
+            for (int k = 0; k < 35; k++)
+                f[i * 35 + k + 48] += f[i * 16 + j + 32] * w[j * 35 + k + 48];
         }
         {
-            int ap = 48, bp = 624;
-            for (int cp = 58; cp < 68; cp++)
+            int ap = 48, bp = 608;
+            for (int cp = 83; cp < 118; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
         {
-            int xp = 58, yp = 0;
-            for (int i = 0; i < 10; i++, xp++) {
+            int xp = 83, yp = 0;
+            for (int i = 0; i < 35; i++, xp++) {
                 y[yp++] += tanh(f[xp]);
             }
         }
@@ -59,14 +59,14 @@ public class Decoder extends VectorDiffStruct {
     @Override
     public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
         {
-            int xp = 58, yp = 0, dxp = 0, dyp = 0;
-            for (int i = 0; i < 10; i++, xp++, yp++) {
+            int xp = 83, yp = 0, dxp = 0, dyp = 0;
+            for (int i = 0; i < 35; i++, xp++, yp++) {
                 b[dxp++] += dy[dyp++] * (1 - y[yp] * y[yp]);
             }
         }
         {
-            int dap = 10, dbp = 624;
-            for (int dcp = 0; dcp < 10; dcp++) {
+            int dap = 35, dbp = 608;
+            for (int dcp = 0; dcp < 35; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
             }
@@ -74,30 +74,30 @@ public class Decoder extends VectorDiffStruct {
         {
             for (int i = 0; i < 1; i++)
             for (int j = 0; j < 16; j++)
-            for (int k = 0; k < 10; k++) {
-                b[i * 16 + j + 20] += b[i * 10 + k + 10] * w[j * 10 + k + 464];
-                dw[j * 10 + k + 464] += f[i * 16 + j + 32] * b[i * 10 + k + 10];
+            for (int k = 0; k < 35; k++) {
+                b[i * 16 + j + 70] += b[i * 35 + k + 35] * w[j * 35 + k + 48];
+                dw[j * 35 + k + 48] += f[i * 16 + j + 32] * b[i * 35 + k + 35];
             }
         }
         {
-            int xp = 16, yp = 32, dxp = 36, dyp = 20;
+            int xp = 16, yp = 32, dxp = 86, dyp = 70;
             for (int i = 0; i < 16; i++, xp++, yp++) {
                 b[dxp++] += b[dyp++] * ((f[xp] < 0) ? 0.001 : 1);
             }
         }
         {
-            int dap = 52, dbp = 448;
-            for (int dcp = 36; dcp < 52; dcp++) {
+            int dap = 102, dbp = 32;
+            for (int dcp = 86; dcp < 102; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
             }
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 28; j++)
+            for (int j = 0; j < 2; j++)
             for (int k = 0; k < 16; k++) {
-                dx[i * 28 + j + 0] += b[i * 16 + k + 52] * w[j * 16 + k + 0];
-                dw[j * 16 + k + 0] += x[i * 28 + j + 0] * b[i * 16 + k + 52];
+                dx[i * 2 + j + 0] += b[i * 16 + k + 102] * w[j * 16 + k + 0];
+                dw[j * 16 + k + 0] += x[i * 2 + j + 0] * b[i * 16 + k + 102];
             }
         }
     }

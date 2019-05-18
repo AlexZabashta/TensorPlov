@@ -89,6 +89,8 @@ public class TestNN {
         }
     };
 
+    // final Map<>
+
     final double[] min = new double[numMF];
     final double[] max = new double[numMF];
 

@@ -1,4 +1,4 @@
-package test.mnist;
+package test.bestcnct;
 
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -10,8 +10,8 @@ import tojava.CompilerToSrc;
 
 public class BuildEHVD {
 
-    public static void buildAndSave(String name, int... sizes) {
-        Node node = Builder.buildLayers(false, sizes);
+    public static void buildAndSave(String name, boolean lastLinear, int... sizes) {
+        Node node = Builder.buildLayers(lastLinear, sizes);
         List<String> programm = CompilerToSrc.compile(null, name, node.preCompile());
         try (PrintWriter writer = new PrintWriter(name + ".java")) {
             for (String line : programm) {
@@ -23,8 +23,9 @@ public class BuildEHVD {
     }
 
     public static void main(String[] args) throws FileNotFoundException {
-        buildAndSave("Encoder", 9, 16, 28);
-        buildAndSave("HVFold", 56, 42, 28);
-        buildAndSave("Decoder", 28, 16, 10);
+        buildAndSave("Encoder", false, 2, 16, 35);
+        buildAndSave("HVFold", false, 70, 55, 35);
+        buildAndSave("Decoder", false, 64, 29, 20, 15, 3);
+        buildAndSave("Simple", false, 29, 20, 15, 3);
     }
 }

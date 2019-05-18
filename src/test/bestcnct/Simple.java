@@ -1,10 +1,10 @@
-package test.meta;
+package test.bestcnct;
 import  static java.lang.Math.*;
 import core.VectorDiffStruct;
 import java.util.Random;
 public class Simple extends VectorDiffStruct {
     public Simple() {
-        super(29, 1086, 1, 136, 136);
+        super(29, 963, 3, 111, 111);
     }
     @Override
     public void init(double[] w) {
@@ -20,13 +20,8 @@ public class Simple extends VectorDiffStruct {
         }
         {
             Random random = new Random();
-            for (int i = 915; i < 1065; i++)
+            for (int i = 915; i < 960; i++)
                 w[i] = 0.2581988897471611 * random.nextGaussian();
-        }
-        {
-            Random random = new Random();
-            for (int i = 1075; i < 1085; i++)
-                w[i] = 0.31622776601683794 * random.nextGaussian();
         }
     }
     @Override
@@ -68,58 +63,32 @@ public class Simple extends VectorDiffStruct {
         {
             for (int i = 0; i < 1; i++)
             for (int j = 0; j < 15; j++)
-            for (int k = 0; k < 10; k++)
-                f[i * 10 + k + 105] += f[i * 15 + j + 90] * w[j * 10 + k + 915];
+            for (int k = 0; k < 3; k++)
+                f[i * 3 + k + 105] += f[i * 15 + j + 90] * w[j * 3 + k + 915];
         }
         {
-            int ap = 105, bp = 1065;
-            for (int cp = 115; cp < 125; cp++)
+            int ap = 105, bp = 960;
+            for (int cp = 108; cp < 111; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
         {
-            int xp = 115, yp = 125;
-            for (int i = 0; i < 10; i++, xp++) {
-                f[yp++] += tanh(f[xp]);
+            int xp = 108, yp = 0;
+            for (int i = 0; i < 3; i++, xp++) {
+                y[yp++] += tanh(f[xp]);
             }
-        }
-        {
-            for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 10; j++)
-            for (int k = 0; k < 1; k++)
-                f[i * 1 + k + 135] += f[i * 10 + j + 125] * w[j * 1 + k + 1075];
-        }
-        {
-            int ap = 135, bp = 1085;
-            for (int cp = 0; cp < 1; cp++)
-                y[cp] += f[ap++] + w[bp++];
         }
     }
     @Override
     public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
         {
-            int dap = 0, dbp = 1085;
-            for (int dcp = 0; dcp < 1; dcp++) {
-                b[dap++] += dy[dcp];
-                dw[dbp++] += dy[dcp];
+            int xp = 108, yp = 0, dxp = 0, dyp = 0;
+            for (int i = 0; i < 3; i++, xp++, yp++) {
+                b[dxp++] += dy[dyp++] * (1 - y[yp] * y[yp]);
             }
         }
         {
-            for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 10; j++)
-            for (int k = 0; k < 1; k++) {
-                b[i * 10 + j + 1] += b[i * 1 + k + 0] * w[j * 1 + k + 1075];
-                dw[j * 1 + k + 1075] += f[i * 10 + j + 125] * b[i * 1 + k + 0];
-            }
-        }
-        {
-            int xp = 115, yp = 125, dxp = 11, dyp = 1;
-            for (int i = 0; i < 10; i++, xp++, yp++) {
-                b[dxp++] += b[dyp++] * (1 - f[yp] * f[yp]);
-            }
-        }
-        {
-            int dap = 21, dbp = 1065;
-            for (int dcp = 11; dcp < 21; dcp++) {
+            int dap = 3, dbp = 960;
+            for (int dcp = 0; dcp < 3; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
             }
@@ -127,20 +96,20 @@ public class Simple extends VectorDiffStruct {
         {
             for (int i = 0; i < 1; i++)
             for (int j = 0; j < 15; j++)
-            for (int k = 0; k < 10; k++) {
-                b[i * 15 + j + 31] += b[i * 10 + k + 21] * w[j * 10 + k + 915];
-                dw[j * 10 + k + 915] += f[i * 15 + j + 90] * b[i * 10 + k + 21];
+            for (int k = 0; k < 3; k++) {
+                b[i * 15 + j + 6] += b[i * 3 + k + 3] * w[j * 3 + k + 915];
+                dw[j * 3 + k + 915] += f[i * 15 + j + 90] * b[i * 3 + k + 3];
             }
         }
         {
-            int xp = 75, yp = 90, dxp = 46, dyp = 31;
+            int xp = 75, yp = 90, dxp = 21, dyp = 6;
             for (int i = 0; i < 15; i++, xp++, yp++) {
                 b[dxp++] += b[dyp++] * ((f[xp] < 0) ? 0.001 : 1);
             }
         }
         {
-            int dap = 61, dbp = 900;
-            for (int dcp = 46; dcp < 61; dcp++) {
+            int dap = 36, dbp = 900;
+            for (int dcp = 21; dcp < 36; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
             }
@@ -149,19 +118,19 @@ public class Simple extends VectorDiffStruct {
             for (int i = 0; i < 1; i++)
             for (int j = 0; j < 20; j++)
             for (int k = 0; k < 15; k++) {
-                b[i * 20 + j + 76] += b[i * 15 + k + 61] * w[j * 15 + k + 600];
-                dw[j * 15 + k + 600] += f[i * 20 + j + 40] * b[i * 15 + k + 61];
+                b[i * 20 + j + 51] += b[i * 15 + k + 36] * w[j * 15 + k + 600];
+                dw[j * 15 + k + 600] += f[i * 20 + j + 40] * b[i * 15 + k + 36];
             }
         }
         {
-            int xp = 20, yp = 40, dxp = 96, dyp = 76;
+            int xp = 20, yp = 40, dxp = 71, dyp = 51;
             for (int i = 0; i < 20; i++, xp++, yp++) {
                 b[dxp++] += b[dyp++] * ((f[xp] < 0) ? 0.001 : 1);
             }
         }
         {
-            int dap = 116, dbp = 580;
-            for (int dcp = 96; dcp < 116; dcp++) {
+            int dap = 91, dbp = 580;
+            for (int dcp = 71; dcp < 91; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
             }
@@ -170,8 +139,8 @@ public class Simple extends VectorDiffStruct {
             for (int i = 0; i < 1; i++)
             for (int j = 0; j < 29; j++)
             for (int k = 0; k < 20; k++) {
-                dx[i * 29 + j + 0] += b[i * 20 + k + 116] * w[j * 20 + k + 0];
-                dw[j * 20 + k + 0] += x[i * 29 + j + 0] * b[i * 20 + k + 116];
+                dx[i * 29 + j + 0] += b[i * 20 + k + 91] * w[j * 20 + k + 0];
+                dw[j * 20 + k + 0] += x[i * 29 + j + 0] * b[i * 20 + k + 91];
             }
         }
     }
