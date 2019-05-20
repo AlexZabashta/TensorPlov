@@ -3,6 +3,8 @@ import java.io.PrintWriter;
 import java.util.List;
 
 import scheme.ApplyFunction;
+import scheme.Builder;
+import scheme.MemoryManager;
 import scheme.Multiplication;
 import scheme.Node;
 import scheme.UnitDerivative;
@@ -18,6 +20,23 @@ public class TestCompiler {
 
     public static void main(String[] args) throws FileNotFoundException {
 
+        MemoryManager manager = new MemoryManager("w");
+
+        Node node = Builder.doubleLstmLayer(manager, 23, 42);
+
+        String name = "LSTM";
+
+        List<String> programm = CompilerToSrc.compile(null, name, node.preCompile());
+
+        try (PrintWriter writer = new PrintWriter(name + ".java")) {
+            for (String line : programm) {
+                writer.println(line);
+            }
+        }
+
+    }
+
+    static void testFC() throws FileNotFoundException {
         int offset = 0;
 
         int[] layers = { 784, 183, 42, 10 };
@@ -53,6 +72,5 @@ public class TestCompiler {
                 writer.println(line);
             }
         }
-
     }
 }

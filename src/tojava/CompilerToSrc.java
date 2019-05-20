@@ -6,7 +6,9 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import scheme.ApplyFunction;
+import scheme.Concat;
 import scheme.Context;
+import scheme.HadamardProduct;
 import scheme.Multiplication;
 import scheme.Node;
 import scheme.Sum;
@@ -132,7 +134,68 @@ public class CompilerToSrc {
             return compileZeroMean((ZeroMean) node, context);
         }
 
+        if (node instanceof Concat) {
+            return compileConcat((Concat) node, context);
+        }
+
+        if (node instanceof HadamardProduct) {
+            return compileHP((HadamardProduct) node, context);
+        }
+
         throw new UnsupportedOperationException("Can't compile " + node.getClass().getSimpleName());
+    }
+
+    private static Program compileHP(HadamardProduct node, Context context) {
+
+        Variable a = context.f.get(node.left);
+        Variable b = context.f.get(node.right);
+        Variable c = context.f.get(node);
+
+        Variable da = context.b.get(node.left);
+        Variable db = context.b.get(node.right);
+        Variable dc = context.b.get(node);
+
+        Program program = new Program();
+
+        program.frwrd.add("int ap = " + a.from + ", bp = " + b.from + ";");
+        program.frwrd.add("for (int cp = " + c.from + "; cp < " + c.to + "; cp++)");
+        program.frwrd.add(TAB + c.base + "[cp] += " + a.base + "[ap++] * " + b.base + "[bp++];");
+
+        program.bkwrd.add("int ap = " + a.from + ", bp = " + b.from + ";");
+        program.bkwrd.add("int dap = " + da.from + ", dbp = " + db.from + ";");
+        program.bkwrd.add("for (int dcp = " + dc.from + "; dcp < " + dc.to + "; dcp++) {");
+        program.bkwrd.add(TAB + da.base + "[dap++] += " + dc.base + "[dcp] * " + b.base + "[bp++];");
+        program.bkwrd.add(TAB + db.base + "[dbp++] += " + dc.base + "[dcp] * " + a.base + "[ap++];");
+        program.bkwrd.add("}");
+
+        return program;
+    }
+
+    private static Program compileConcat(Concat node, Context context) {
+
+        int len = node.subNodes.length;
+
+        Variable t = context.f.get(node);
+
+        Program program = new Program();
+
+        program.frwrd.add("int tp = " + t.from + ";");
+
+        for (int i = 0; i < len; i++) {
+            Variable f = context.f.get(node.subNodes[i]);
+            program.frwrd.add("for (int fp = " + f.from + "; fp < " + f.to + "; fp++)");
+            program.frwrd.add(TAB + t.base + "[tp++] += " + f.base + "[fp];");
+        }
+
+        Variable dt = context.f.get(node);
+        program.bkwrd.add("int dtp = " + dt.from + ";");
+        for (int i = 0; i < len; i++) {
+            Variable df = context.f.get(node.subNodes[i]);
+            program.bkwrd.add("for (int dfp = " + df.from + "; dfp < " + df.to + "; dfp++)");
+            program.bkwrd.add(TAB + df.base + "[dfp] += " + dt.base + "[dtp++];");
+        }
+
+        return program;
     }
 
     private static Program compileUnitStd(UnitStd node, Context context) {
