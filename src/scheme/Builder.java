@@ -46,4 +46,36 @@ public class Builder {
 
         return node;
     }
+
+    public static Node fullConnectedLayer(MemoryManager mem, Node input, int outputLength, StringFunction activation) {
+        Variable w = mem.alloc(input.outputLength() * outputLength);
+        Multiplication mul = new Multiplication(1, input.outputLength(), outputLength, input, w);
+        Variable b = mem.alloc(outputLength);
+        Sum sum = new Sum(mul, b);
+        return new ApplyFunction(sum, activation);
+
+    }
+
+    public static Node doubleLstmLayer(MemoryManager mem, int hsize, int csize) {
+
+        Variable h1 = new Variable("x", 0, hsize);
+        Variable c1 = new Variable("x", h1.to, h1.to + csize);
+        Variable h2 = new Variable("x", c1.to, c1.to + hsize);
+        Variable c2 = new Variable("x", h2.to, h2.to + csize);
+
+        Node hh = new Concat(h1, h2);
+
+        Tanh tanh = new Tanh();
+        Sigmoid sigmoid = new Sigmoid();
+
+        Node f1 = fullConnectedLayer(mem, hh, csize, sigmoid);
+        Node f2 = fullConnectedLayer(mem, hh, csize, sigmoid);
+        Node i = fullConnectedLayer(mem, hh, csize, sigmoid);
+        Node s = fullConnectedLayer(mem, hh, csize, tanh);
+        Node o = fullConnectedLayer(mem, hh, csize, sigmoid);
+        Node c = new Sum(new Sum(new HadamardProduct(f1, c1), new HadamardProduct(f2, c2)), new HadamardProduct(i, s));
+        Node h = new HadamardProduct(o, new ApplyFunction(c, tanh));
+
+        return new Concat(h, c);
+    }
 }
