@@ -49,7 +49,7 @@ public class Deconvolution implements MultiVarDiffStruct<double[][][], double[]>
                 for (int i = 0; i < src.length; i++) {
                     dst[i] += src[i] * scale;
                 }
-                
+
                 delta = dxe.getLeft();
                 error = (first.error + secnd.error) / 2;
 
@@ -69,7 +69,6 @@ public class Deconvolution implements MultiVarDiffStruct<double[][][], double[]>
                     delta[COL_EXP_ID] = values[COL_EXP_ID] - defaultExpand;
                 }
 
-                delta[ROW_EXP_ID] = delta[COL_EXP_ID] = defaultExpand;
             }
 
             if (derivative == null) {
@@ -244,8 +243,8 @@ public class Deconvolution implements MultiVarDiffStruct<double[][][], double[]>
 
                         minError = Math.min(minError, node.error);
                         maxError = Math.max(maxError, node.error);
-                        avgError = node.error * node.weight();
-                        nrmError = node.weight();
+                        avgError += node.error * node.weight();
+                        nrmError += node.weight();
                     }
                 }
 

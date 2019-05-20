@@ -10,7 +10,7 @@ import java.util.Set;
 
 public abstract class Node {
 
-    final Node[] subNodes;
+    public final Node[] subNodes;
 
     public Node(Node... subNodes) {
         this.subNodes = subNodes;

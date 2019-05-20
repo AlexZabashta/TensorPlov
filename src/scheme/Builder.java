@@ -20,22 +20,25 @@ public class Builder {
 
             Variable w = new Variable("w", offset, offset += sizes[i - 1] * sizes[i]);
             Multiplication mul = new Multiplication(1, sizes[i - 1], sizes[i], node, w);
-            Variable b = new Variable("w", offset, offset += sizes[i]);
-
-            Sum sum = new Sum(mul, b);
 
             if (lastLinear) {
                 if (i < sizes.length - 2) {
+                    Variable b = new Variable("w", offset, offset += sizes[i]);
+                    Sum sum = new Sum(mul, b);
                     node = new ApplyFunction(sum, relu);
                 }
                 if (i == sizes.length - 2) {
+                    Variable b = new Variable("w", offset, offset += sizes[i]);
+                    Sum sum = new Sum(mul, b);
                     node = new ApplyFunction(sum, tanh);
                 }
 
                 if (i == sizes.length - 1) {
-                    node = sum;
+                    node = mul;
                 }
             } else {
+                Variable b = new Variable("w", offset, offset += sizes[i]);
+                Sum sum = new Sum(mul, b);
                 if (i == sizes.length - 1) {
                     node = new ApplyFunction(sum, tanh);
                 } else {
@@ -56,23 +59,23 @@ public class Builder {
 
     }
 
-    public static Node doubleLstmLayer(MemoryManager mem, int hsize, int csize) {
+    public static Node doubleLstmLayer(MemoryManager mem, int size) {
 
-        Variable h1 = new Variable("x", 0, hsize);
-        Variable c1 = new Variable("x", h1.to, h1.to + csize);
-        Variable h2 = new Variable("x", c1.to, c1.to + hsize);
-        Variable c2 = new Variable("x", h2.to, h2.to + csize);
+        Variable h1 = new Variable("x", 0, size);
+        Variable c1 = new Variable("x", h1.to, h1.to + size);
+        Variable h2 = new Variable("x", c1.to, c1.to + size);
+        Variable c2 = new Variable("x", h2.to, h2.to + size);
 
         Node hh = new Concat(h1, h2);
 
         Tanh tanh = new Tanh();
         Sigmoid sigmoid = new Sigmoid();
 
-        Node f1 = fullConnectedLayer(mem, hh, csize, sigmoid);
-        Node f2 = fullConnectedLayer(mem, hh, csize, sigmoid);
-        Node i = fullConnectedLayer(mem, hh, csize, sigmoid);
-        Node s = fullConnectedLayer(mem, hh, csize, tanh);
-        Node o = fullConnectedLayer(mem, hh, csize, sigmoid);
+        Node f1 = fullConnectedLayer(mem, hh, size, sigmoid);
+        Node f2 = fullConnectedLayer(mem, hh, size, sigmoid);
+        Node i = fullConnectedLayer(mem, hh, size, sigmoid);
+        Node s = fullConnectedLayer(mem, hh, size, tanh);
+        Node o = fullConnectedLayer(mem, hh, size, sigmoid);
         Node c = new Sum(new Sum(new HadamardProduct(f1, c1), new HadamardProduct(f2, c2)), new HadamardProduct(i, s));
         Node h = new HadamardProduct(o, new ApplyFunction(c, tanh));
 

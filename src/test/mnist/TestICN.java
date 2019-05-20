@@ -149,7 +149,10 @@ public class TestICN extends JFrame {
                 throw new RuntimeException(exception);
             }
 
-            HVFold hvFold = new HVFold();
+            // HVFold hvFold = new HVFold();
+
+            LSTM hvFold = new LSTM();
+
             Convolution convolution = new ImgConvolution(hvFold.ySize, hvFold, hvFold);
 
             Encoder encoder = new Encoder();

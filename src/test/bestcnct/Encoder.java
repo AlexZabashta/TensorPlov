@@ -4,7 +4,7 @@ import core.VectorDiffStruct;
 import java.util.Random;
 public class Encoder extends VectorDiffStruct {
     public Encoder() {
-        super(2, 643, 35, 118, 118);
+        super(2, 728, 40, 128, 128);
     }
     @Override
     public void init(double[] w) {
@@ -15,7 +15,7 @@ public class Encoder extends VectorDiffStruct {
         }
         {
             Random random = new Random();
-            for (int i = 48; i < 608; i++)
+            for (int i = 48; i < 688; i++)
                 w[i] = 0.25 * random.nextGaussian();
         }
     }
@@ -41,17 +41,17 @@ public class Encoder extends VectorDiffStruct {
         {
             for (int i = 0; i < 1; i++)
             for (int j = 0; j < 16; j++)
-            for (int k = 0; k < 35; k++)
-                f[i * 35 + k + 48] += f[i * 16 + j + 32] * w[j * 35 + k + 48];
+            for (int k = 0; k < 40; k++)
+                f[i * 40 + k + 48] += f[i * 16 + j + 32] * w[j * 40 + k + 48];
         }
         {
-            int ap = 48, bp = 608;
-            for (int cp = 83; cp < 118; cp++)
+            int ap = 48, bp = 688;
+            for (int cp = 88; cp < 128; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
         {
-            int xp = 83, yp = 0;
-            for (int i = 0; i < 35; i++, xp++) {
+            int xp = 88, yp = 0;
+            for (int i = 0; i < 40; i++, xp++) {
                 y[yp++] += tanh(f[xp]);
             }
         }
@@ -59,14 +59,14 @@ public class Encoder extends VectorDiffStruct {
     @Override
     public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
         {
-            int xp = 83, yp = 0, dxp = 0, dyp = 0;
-            for (int i = 0; i < 35; i++, xp++, yp++) {
+            int xp = 88, yp = 0, dxp = 0, dyp = 0;
+            for (int i = 0; i < 40; i++, xp++, yp++) {
                 b[dxp++] += dy[dyp++] * (1 - y[yp] * y[yp]);
             }
         }
         {
-            int dap = 35, dbp = 608;
-            for (int dcp = 0; dcp < 35; dcp++) {
+            int dap = 40, dbp = 688;
+            for (int dcp = 0; dcp < 40; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
             }
@@ -74,20 +74,20 @@ public class Encoder extends VectorDiffStruct {
         {
             for (int i = 0; i < 1; i++)
             for (int j = 0; j < 16; j++)
-            for (int k = 0; k < 35; k++) {
-                b[i * 16 + j + 70] += b[i * 35 + k + 35] * w[j * 35 + k + 48];
-                dw[j * 35 + k + 48] += f[i * 16 + j + 32] * b[i * 35 + k + 35];
+            for (int k = 0; k < 40; k++) {
+                b[i * 16 + j + 80] += b[i * 40 + k + 40] * w[j * 40 + k + 48];
+                dw[j * 40 + k + 48] += f[i * 16 + j + 32] * b[i * 40 + k + 40];
             }
         }
         {
-            int xp = 16, yp = 32, dxp = 86, dyp = 70;
+            int xp = 16, yp = 32, dxp = 96, dyp = 80;
             for (int i = 0; i < 16; i++, xp++, yp++) {
                 b[dxp++] += b[dyp++] * ((f[xp] < 0) ? 0.001 : 1);
             }
         }
         {
-            int dap = 102, dbp = 32;
-            for (int dcp = 86; dcp < 102; dcp++) {
+            int dap = 112, dbp = 32;
+            for (int dcp = 96; dcp < 112; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
             }
@@ -96,8 +96,8 @@ public class Encoder extends VectorDiffStruct {
             for (int i = 0; i < 1; i++)
             for (int j = 0; j < 2; j++)
             for (int k = 0; k < 16; k++) {
-                dx[i * 2 + j + 0] += b[i * 16 + k + 102] * w[j * 16 + k + 0];
-                dw[j * 16 + k + 0] += x[i * 2 + j + 0] * b[i * 16 + k + 102];
+                dx[i * 2 + j + 0] += b[i * 16 + k + 112] * w[j * 16 + k + 0];
+                dw[j * 16 + k + 0] += x[i * 2 + j + 0] * b[i * 16 + k + 112];
             }
         }
     }

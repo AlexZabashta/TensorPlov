@@ -36,8 +36,9 @@ import core.Result;
 import dataset.Convolution;
 import dataset.SymConvolution;
 import grad.MAdaGrad;
-import grad.MSGD;
 import mfextraction.CMFExtractor;
+import utils.ArrayUtils;
+import utils.MatrixUtils;
 import weka.classifiers.Evaluation;
 import weka.classifiers.functions.SMO;
 import weka.classifiers.lazy.IBk;
@@ -68,7 +69,14 @@ public class TestNN {
                 Instances instances = WekaConverter.convert(dataset);
                 Evaluation evaluation = new Evaluation(instances);
                 evaluation.crossValidateModel(new IBk(), instances, 8, new Random(42));
-                return evaluation.weightedFMeasure();
+                double fscore = evaluation.weightedFMeasure();
+
+                if (Double.isFinite(fscore)) {
+                    return fscore;
+                } else {
+                    System.err.println(dataset.name + " knn " + fscore);
+                    return 0;
+                }
             } catch (Exception e) {
                 return 0;
             }
@@ -82,7 +90,14 @@ public class TestNN {
                 Instances instances = WekaConverter.convert(dataset);
                 Evaluation evaluation = new Evaluation(instances);
                 evaluation.crossValidateModel(new SMO(), instances, 8, new Random(42));
-                return evaluation.weightedFMeasure();
+                double fscore = evaluation.weightedFMeasure();
+
+                if (Double.isFinite(fscore)) {
+                    return fscore;
+                } else {
+                    System.err.println(dataset.name + " svm " + fscore);
+                    return 0;
+                }
             } catch (Exception e) {
                 return 0;
             }
@@ -96,7 +111,14 @@ public class TestNN {
                 Instances instances = WekaConverter.convert(dataset);
                 Evaluation evaluation = new Evaluation(instances);
                 evaluation.crossValidateModel(new J48(), instances, 8, new Random(42));
-                return evaluation.weightedFMeasure();
+                double fscore = evaluation.weightedFMeasure();
+
+                if (Double.isFinite(fscore)) {
+                    return fscore;
+                } else {
+                    System.err.println(dataset.name + " rfr " + fscore);
+                    return 0;
+                }
             } catch (Exception e) {
                 return 0;
             }
@@ -108,29 +130,133 @@ public class TestNN {
         public double[] apply(Dataset dataset) {
 
             double[] score = { knnScore.applyAsDouble(dataset), svmScore.applyAsDouble(dataset), rfrScore.applyAsDouble(dataset) };
-            double maxScore = Double.NEGATIVE_INFINITY;
-            for (double val : score) {
-                maxScore = Math.max(maxScore, val);
-            }
 
-            for (int i = 0; i < 3; i++) {
-                if (score[i] >= maxScore - 0.03) {
-                    score[i] = +1;
-                } else {
-                    score[i] = -1;
-                }
-            }
+            // double maxScore = Double.NEGATIVE_INFINITY;
+            // for (double val : score) {
+            // maxScore = Math.max(maxScore, val);
+            // }
+            //
+            // for (int i = 0; i < 3; i++) {
+            // if (score[i] >= maxScore - 0.03) {
+            // score[i] = +1;
+            // } else {
+            // score[i] = -1;
+            // }
+            // }
 
             return score;
         }
     };
 
-    // final Map<>
+    List<Input> normalize(List<Input> rawDatasets, int numMF, int numTY) {
+        double[] meanMF = new double[numMF];
+        double[] meanTY = new double[numTY];
 
-    final double[] min = new double[numMF];
-    final double[] max = new double[numMF];
+        for (Input dataset : rawDatasets) {
+            double[] mf = dataset.mf;
+            double[] ty = dataset.ty;
 
-    final HVFold hvFold = new HVFold();
+            for (int i = 0; i < numMF; i++) {
+                meanMF[i] += mf[i];
+            }
+
+            for (int i = 0; i < numTY; i++) {
+                meanTY[i] += ty[i];
+            }
+        }
+
+        for (int i = 0; i < numMF; i++) {
+            meanMF[i] /= rawDatasets.size();
+        }
+
+        for (int i = 0; i < numTY; i++) {
+            meanTY[i] /= rawDatasets.size();
+        }
+
+        double[][] covMF = new double[numMF][numMF];
+        double[][] covTY = new double[numTY][numTY];
+
+        for (Input dataset : rawDatasets) {
+            double[] mf = dataset.mf;
+            double[] ty = dataset.ty;
+
+            for (int i = 0; i < numMF; i++) {
+                for (int j = 0; j < numMF; j++) {
+                    covMF[i][j] += (mf[i] - meanMF[i]) * (mf[j] - meanMF[j]);
+                }
+
+            }
+
+            for (int i = 0; i < numTY; i++) {
+                for (int j = 0; j < numTY; j++) {
+                    covTY[i][j] += (ty[i] - meanTY[i]) * (ty[j] - meanTY[j]);
+                }
+            }
+        }
+
+        for (int i = 0; i < numMF; i++) {
+            for (int j = 0; j < numMF; j++) {
+                covMF[i][j] /= rawDatasets.size();
+            }
+            covMF[i][i] += 1e-7;
+        }
+
+        for (int i = 0; i < numTY; i++) {
+            for (int j = 0; j < numTY; j++) {
+                covTY[i][j] /= rawDatasets.size();
+            }
+            covTY[i][i] += 1e-7;
+        }
+
+        ArrayUtils.print(covMF);
+        ArrayUtils.print(covTY);
+
+        double[][] invMF = MatrixUtils.inv(numMF, covMF);
+        double[][] invTY = MatrixUtils.inv(numTY, covTY);
+
+        ArrayUtils.print(invMF);
+        ArrayUtils.print(invTY);
+
+        for (int i = 0; i < numMF; i++) {
+            invMF[i][i] += 1e-7;
+        }
+
+        for (int i = 0; i < numTY; i++) {
+            invTY[i][i] += 1e-7;
+        }
+
+        double[][] sqrMF = MatrixUtils.sqrt(invMF);
+        double[][] sqrTY = MatrixUtils.sqrt(invTY);
+
+        ArrayUtils.print(sqrMF);
+        ArrayUtils.print(sqrTY);
+
+        final List<Input> datasets = new ArrayList<>();
+
+        for (Input dataset : rawDatasets) {
+            double[] mf = new double[numMF];
+            double[] ty = new double[numTY];
+
+            for (int i = 0; i < numMF; i++) {
+                for (int j = 0; j < numMF; j++) {
+                    mf[i] += (dataset.mf[j] - meanMF[j]) * sqrMF[j][i];
+                }
+            }
+
+            for (int i = 0; i < numTY; i++) {
+                for (int j = 0; j < numTY; j++) {
+                    ty[i] += (dataset.ty[j] - meanTY[j]) * sqrTY[j][i];
+                }
+            }
+
+            datasets.add(new Input(dataset.name, dataset.dataset, mf, ty));
+        }
+
+        return datasets;
+    }
+
+    // final HVFold hvFold = new HVFold();
+    final LSTM hvFold = new LSTM();
     final Convolution convolution = new SymConvolution(hvFold.ySize, hvFold, hvFold);
 
     final Encoder encoder = new Encoder();
@@ -146,8 +272,6 @@ public class TestNN {
     final double[] enc, dec, hor, ver, sim;
 
     public TestNN() {
-        Arrays.fill(min, Double.POSITIVE_INFINITY);
-        Arrays.fill(max, Double.NEGATIVE_INFINITY);
 
         enc = new double[encoder.numBoundVars()];
         dec = new double[decoder.numBoundVars()];
@@ -185,12 +309,7 @@ public class TestNN {
 
         @Override
         public PredictResult call() throws Exception {
-            double[] rmf = dataset.mf;
-            double[] nmf = new double[numMF];
-            for (int i = 0; i < numMF; i++) {
-                nmf[i] = (rmf[i] - min[i]) / (max[i] - min[i]) * 2 - 1;
-            }
-            Result<Pair<double[], double[]>, double[]> sp = simple.result(nmf, sim);
+            Result<Pair<double[], double[]>, double[]> sp = simple.result(dataset.mf, sim);
 
             Pair<double[][][], double[]> pair = Pair.of(dataset.dataset, dataset.mf);
 
@@ -254,25 +373,20 @@ public class TestNN {
             }
         }
 
-        final List<Input> datasets = new ArrayList<>();
+        final List<Input> rawDatasets = new ArrayList<>();
 
         for (Future<Input> finput : finputs) {
-            datasets.add(finput.get());
+            rawDatasets.add(finput.get());
         }
 
         int numMF = extractor.length();
+        int numTY = 3;
+        final int numData = rawDatasets.size();
 
-        final int numData = datasets.size();
+        final List<Input> datasets = normalize(rawDatasets, numMF, numTY);
+
         List<Input> train = new ArrayList<>();
         List<Input> test = new ArrayList<>();
-
-        for (Input dataset : datasets) {
-            double[] vector = dataset.mf;
-            for (int j = 0; j < numMF; j++) {
-                min[j] = Math.min(min[j], vector[j]);
-                max[j] = Math.max(max[j], vector[j]);
-            }
-        }
 
         Collections.sort(datasets, Comparator.comparing(dataset -> dataset.name));
 
