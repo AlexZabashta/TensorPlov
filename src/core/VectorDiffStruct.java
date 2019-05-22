@@ -58,6 +58,13 @@ public abstract class VectorDiffStruct implements VarDiffStruct<double[], double
     }
 
     @Override
+    public double[] genBoundVars() {
+        double[] w = new double[wSize];
+        init(w);
+        return w;
+    }
+
+    @Override
     public int numBoundVars() {
         return wSize;
     }

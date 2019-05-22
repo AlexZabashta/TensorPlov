@@ -219,4 +219,9 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
         return new int[] { horzFold.numBoundVars(), vertFold.numBoundVars() };
     }
 
+    @Override
+    public double[][] genBoundVars() {
+        return new double[][] { horzFold.genBoundVars(), vertFold.genBoundVars() };
+    }
+
 }

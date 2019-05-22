@@ -12,4 +12,6 @@ public interface VarDiffStruct<F, T> extends DiffFunct<Pair<F, double[]>, T> {
 
     public Result<Pair<F, double[]>, T> result(F freeVar, double[] bounVar);
 
+    public double[] genBoundVars();
+
 }

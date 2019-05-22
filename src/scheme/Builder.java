@@ -59,7 +59,7 @@ public class Builder {
 
     }
 
-    public static Node doubleLstmLayer(MemoryManager mem, int size) {
+    public static Node conLstmLayer(MemoryManager mem, int size) {
 
         Variable h1 = new Variable("x", 0, size);
         Variable c1 = new Variable("x", h1.to, h1.to + size);
@@ -80,5 +80,29 @@ public class Builder {
         Node h = new HadamardProduct(o, new ApplyFunction(c, tanh));
 
         return new Concat(h, c);
+    }
+
+    public static Node decLstmLayer(MemoryManager mem, int size) {
+        Tanh tanh = new Tanh();
+        Sigmoid sigmoid = new Sigmoid();
+
+        Variable h = new Variable("x", 0, size);
+        Variable c = new Variable("x", h.to, h.to + size);
+
+        Node s = fullConnectedLayer(mem, h, size, tanh);
+
+        Node f1 = fullConnectedLayer(mem, h, size, sigmoid);
+        Node i1 = fullConnectedLayer(mem, h, size, sigmoid);
+        Node o1 = fullConnectedLayer(mem, h, size, sigmoid);
+        Node c1 = new Sum(new HadamardProduct(f1, c), new HadamardProduct(i1, s));
+        Node h1 = new HadamardProduct(o1, new ApplyFunction(c1, tanh));
+
+        Node f2 = fullConnectedLayer(mem, h, size, sigmoid);
+        Node i2 = fullConnectedLayer(mem, h, size, sigmoid);
+        Node o2 = fullConnectedLayer(mem, h, size, sigmoid);
+        Node c2 = new Sum(new HadamardProduct(f2, c), new HadamardProduct(i2, s));
+        Node h2 = new HadamardProduct(o2, new ApplyFunction(c2, tanh));
+
+        return new Concat(h1, c1, h2, c2);
     }
 }

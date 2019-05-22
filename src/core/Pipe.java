@@ -74,4 +74,17 @@ public class Pipe<L, M, R> implements MultiVarDiffStruct<L, R> {
         return first + " => " + secnd;
     }
 
+    @Override
+    public double[][] genBoundVars() {
+        double[][] firstBounVar = first.genBoundVars();
+        double[][] secndBounVar = secnd.genBoundVars();
+
+        double[][] bounVar = new double[firstLength + secndLength][];
+
+        System.arraycopy(firstBounVar, 0, bounVar, 0, firstLength);
+        System.arraycopy(secndBounVar, 0, bounVar, firstLength, secndLength);
+
+        return bounVar;
+    }
+
 }

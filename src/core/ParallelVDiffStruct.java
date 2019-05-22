@@ -76,4 +76,9 @@ public class ParallelVDiffStruct implements VarDiffStruct<double[][][], double[]
         }, output);
     }
 
+    @Override
+    public double[] genBoundVars() {
+        return base.genBoundVars();
+    }
+
 }

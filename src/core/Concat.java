@@ -47,4 +47,9 @@ public class Concat<F> implements MultiVarDiffStruct<Pair<F, double[]>, double[]
         }, vector);
     }
 
+    @Override
+    public double[][] genBoundVars() {
+        return base.genBoundVars();
+    }
+
 }

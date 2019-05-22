@@ -29,11 +29,51 @@ public interface MultiVarDiffStruct<F, T> extends DiffFunct<Pair<F, double[][]>,
             public String toString() {
                 return varDiffStruct.toString();
             }
-        };
 
+            @Override
+            public double[][] genBoundVars() {
+                return new double[][] { varDiffStruct.genBoundVars() };
+            }
+        };
+    }
+
+    public static <F, T> MultiVarDiffStruct<F, T> convertDS(DiffFunct<F, T> diffFunct) {
+        return new MultiVarDiffStruct<F, T>() {
+
+            @Override
+            public int[] numBoundVars() {
+                return new int[0];
+            }
+
+            @Override
+            public Result<Pair<F, double[][]>, T> result(F input, double[]... empty) {
+
+                Result<F, T> result = diffFunct.result(input);
+
+                return new Result<Pair<F, double[][]>, T>(new Function<T, Pair<F, double[][]>>() {
+                    @Override
+                    public Pair<F, double[][]> apply(T deltaOutput) {
+                        F deltaInput = result.apply(deltaOutput);
+                        return Pair.of(deltaInput, new double[0][]);
+                    }
+                }, result.value());
+            }
+
+            @Override
+            public String toString() {
+                return diffFunct.toString();
+            }
+
+            @Override
+            public double[][] genBoundVars() {
+                return new double[0][];
+            }
+        };
     }
 
     public int[] numBoundVars();
+
+    public double[][] genBoundVars();
 
     public Result<Pair<F, double[][]>, T> result(F freeVar, double[]... bounVar);
 
