@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.function.Function;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import core.BoundVarShape;
@@ -47,12 +48,9 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
                 sumHor += first.sumVer;
                 sumVer += secnd.sumVer;
 
-                double[] common = new double[depth * 2];
+                double[] commonDelta = ArrayUtils.addAll(firstDelta, secndDelta);
 
-                System.arraycopy(firstDelta, 0, common, 0, depth);
-                System.arraycopy(secndDelta, 0, common, depth, depth);
-
-                Pair<double[], double[]> dxe = derivative.apply(common);
+                Pair<double[], double[]> dxe = derivative.apply(commonDelta);
 
                 double[] src = dxe.getRight();
                 double[] dst = horizontal ? sdh : sdv;
@@ -127,12 +125,10 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
             }
             derivative = result.derivative();
 
-            double[] firstValues = first.values = new double[depth];
-            double[] secndValues = secnd.values = new double[depth];
+            double[] resultValue = result.value();
 
-            System.arraycopy(result.value(), 0, firstValues, 0, depth);
-            System.arraycopy(result.value(), depth, secndValues, 0, depth);
-
+            first.values = Arrays.copyOfRange(resultValue, 0, depth);
+            secnd.values = Arrays.copyOfRange(resultValue, depth, resultValue.length);
         }
 
         void setDelta(double[] delta) {
@@ -163,20 +159,36 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
     }
 
     public static final int COL_EXP_ID = 1;
+
+    public static final int RAND_LEN = 4;
+
     public static final int ROW_EXP_ID = 0;
     public final int depth;
-
     public final VarDiffStruct<double[], double[]> horzExpand;
-    public final int rows, cols;
 
+    public final int rows, cols;
     public final VarDiffStruct<double[], double[]> vertExpand;
 
-    public Deconvolution(int depth, VarDiffStruct<double[], double[]> horzExpand, VarDiffStruct<double[], double[]> vertExpand, int rows, int cols) {
-        this.depth = depth;
-        this.horzExpand = horzExpand;
-        this.vertExpand = vertExpand;
+    public Deconvolution(int rows, int cols, VarDiffStruct<double[], double[]> horzExpand, VarDiffStruct<double[], double[]> vertExpand) {
         this.rows = rows;
         this.cols = cols;
+
+        this.horzExpand = horzExpand;
+        this.vertExpand = vertExpand;
+
+        this.depth = ((VectorShape) horzExpand.freeVarType()).length - RAND_LEN;
+        if (depth != ((VectorShape) vertExpand.freeVarType()).length - RAND_LEN) {
+            throw new IllegalArgumentException("horzExpand.freeVarType().length != vertExpand.freeVarType().length");
+        }
+
+        if (2 * depth != ((VectorShape) horzExpand.outputType()).length) {
+            throw new IllegalArgumentException("horzFold.outputType().length != 2 * depth");
+        }
+
+        if (2 * depth != ((VectorShape) vertExpand.outputType()).length) {
+            throw new IllegalArgumentException("vertFold.outputType().length != 2 * depth");
+        }
+
     }
 
     @Override
@@ -318,6 +330,11 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
 
         }, dataset);
 
+    }
+
+    @Override
+    public String toString() {
+        return "Deconvolution [rows=" + rows + ", cols=" + cols + ", depth=" + depth + ", horzExpand=" + horzExpand + ", vertExpand=" + vertExpand + "]";
     }
 
 }

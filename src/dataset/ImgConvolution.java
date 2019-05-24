@@ -94,4 +94,9 @@ public class ImgConvolution extends Convolution {
 
     }
 
+    @Override
+    public String toString() {
+        return "ImgConvolution [rows=" + rows + ", cols=" + cols + ", depth=" + depth + ", horzFold=" + horzFold + ", vertFold=" + vertFold + "]";
+    }
+
 }

@@ -16,10 +16,6 @@ public class BoundVarShape {
         this.numBoundVars = numBoundVars;
     }
 
-    final int length() {
-        return numBoundVars.length;
-    }
-
     public BoundVarShape concat(BoundVarShape shape) {
         return concat(this, shape);
     }
@@ -47,6 +43,10 @@ public class BoundVarShape {
     @Override
     public int hashCode() {
         return Arrays.hashCode(numBoundVars);
+    }
+
+    final int length() {
+        return numBoundVars.length;
     }
 
     public int[] numBoundVars() {

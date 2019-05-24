@@ -9,10 +9,10 @@ import org.apache.commons.lang3.tuple.Pair;
 public class Concat<F, S> implements MultiVarDiffStruct<Pair<F, S>, double[]> {
 
     public final MultiVarDiffStruct<F, double[]> first;
-    public final MultiVarDiffStruct<S, double[]> secnd;
+    public final int firstBvLen, secndBvLen;
 
     public final int firstOutputLength, secndOutputLength;
-    public final int firstBvLen, secndBvLen;
+    public final MultiVarDiffStruct<S, double[]> secnd;
 
     public Concat(MultiVarDiffStruct<F, double[]> first, MultiVarDiffStruct<S, double[]> secnd) {
         this.first = first;
@@ -50,7 +50,7 @@ public class Concat<F, S> implements MultiVarDiffStruct<Pair<F, S>, double[]> {
     public Result<Pair<Pair<F, S>, double[][]>, double[]> result(Pair<F, S> freeVar, double[]... boundVar) {
 
         double[][] fbv = Arrays.copyOfRange(boundVar, 0, firstBvLen);
-        double[][] sbv = Arrays.copyOfRange(boundVar, firstBvLen, secndBvLen);
+        double[][] sbv = Arrays.copyOfRange(boundVar, firstBvLen, boundVar.length);
 
         Result<Pair<F, double[][]>, double[]> firstResult = first.result(freeVar.getLeft(), fbv);
         Result<Pair<S, double[][]>, double[]> secndResult = secnd.result(freeVar.getRight(), sbv);
@@ -65,7 +65,7 @@ public class Concat<F, S> implements MultiVarDiffStruct<Pair<F, S>, double[]> {
             @Override
             public Pair<Pair<F, S>, double[][]> apply(double[] dy) {
                 double[] df = Arrays.copyOfRange(dy, 0, firstOutputLength);
-                double[] ds = Arrays.copyOfRange(dy, firstOutputLength, secndOutputLength);
+                double[] ds = Arrays.copyOfRange(dy, firstOutputLength, dy.length);
 
                 Pair<F, double[][]> fdx = firstDer.apply(df);
                 Pair<S, double[][]> sdx = secndDer.apply(ds);

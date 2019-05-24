@@ -1,11 +1,16 @@
 package test.mnist;
-import  static java.lang.Math.*;
+
+import static java.lang.Math.*;
 import core.VectorDiffStruct;
+
+import java.util.Locale;
 import java.util.Random;
+
 public class LSTM extends VectorDiffStruct {
     public LSTM() {
         super(56, 2030, 28, 336, 336);
     }
+
     @Override
     public void init(double[] w) {
         {
@@ -34,6 +39,7 @@ public class LSTM extends VectorDiffStruct {
                 w[i] = 0.1889822365046136 * random.nextGaussian();
         }
     }
+
     @Override
     public void forward(double[] x, double[] w, double[] y, double[] f) {
         {
@@ -45,9 +51,9 @@ public class LSTM extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 28; j++)
-            for (int k = 0; k < 14; k++)
-                f[i * 14 + k + 28] += f[i * 28 + j + 0] * w[j * 14 + k + 1624];
+                for (int j = 0; j < 28; j++)
+                    for (int k = 0; k < 14; k++)
+                        f[i * 14 + k + 28] += f[i * 28 + j + 0] * w[j * 14 + k + 1624];
         }
         {
             int ap = 28, bp = 2016;
@@ -62,9 +68,9 @@ public class LSTM extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 28; j++)
-            for (int k = 0; k < 14; k++)
-                f[i * 14 + k + 70] += f[i * 28 + j + 0] * w[j * 14 + k + 0];
+                for (int j = 0; j < 28; j++)
+                    for (int k = 0; k < 14; k++)
+                        f[i * 14 + k + 70] += f[i * 28 + j + 0] * w[j * 14 + k + 0];
         }
         {
             int ap = 70, bp = 392;
@@ -84,9 +90,9 @@ public class LSTM extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 28; j++)
-            for (int k = 0; k < 14; k++)
-                f[i * 14 + k + 126] += f[i * 28 + j + 0] * w[j * 14 + k + 406];
+                for (int j = 0; j < 28; j++)
+                    for (int k = 0; k < 14; k++)
+                        f[i * 14 + k + 126] += f[i * 28 + j + 0] * w[j * 14 + k + 406];
         }
         {
             int ap = 126, bp = 798;
@@ -111,9 +117,9 @@ public class LSTM extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 28; j++)
-            for (int k = 0; k < 14; k++)
-                f[i * 14 + k + 196] += f[i * 28 + j + 0] * w[j * 14 + k + 812];
+                for (int j = 0; j < 28; j++)
+                    for (int k = 0; k < 14; k++)
+                        f[i * 14 + k + 196] += f[i * 28 + j + 0] * w[j * 14 + k + 812];
         }
         {
             int ap = 196, bp = 1204;
@@ -128,9 +134,9 @@ public class LSTM extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 28; j++)
-            for (int k = 0; k < 14; k++)
-                f[i * 14 + k + 238] += f[i * 28 + j + 0] * w[j * 14 + k + 1218];
+                for (int j = 0; j < 28; j++)
+                    for (int k = 0; k < 14; k++)
+                        f[i * 14 + k + 238] += f[i * 28 + j + 0] * w[j * 14 + k + 1218];
         }
         {
             int ap = 238, bp = 1610;
@@ -172,14 +178,15 @@ public class LSTM extends VectorDiffStruct {
                 y[tp++] += f[fp];
         }
     }
+
     @Override
     public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
         {
             int dtp = 0;
-            for (int dfp = 322; dfp < 336; dfp++)
-                f[dfp] += y[dtp++];
-            for (int dfp = 294; dfp < 308; dfp++)
-                f[dfp] += y[dtp++];
+            for (int dfp = 0; dfp < 14; dfp++)
+                b[dfp] += dy[dtp++];
+            for (int dfp = 28; dfp < 42; dfp++)
+                b[dfp] += dy[dtp++];
         }
         {
             int ap = 56, bp = 308;
@@ -225,11 +232,11 @@ public class LSTM extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 28; j++)
-            for (int k = 0; k < 14; k++) {
-                b[i * 28 + j + 308] += b[i * 14 + k + 84] * w[j * 14 + k + 1218];
-                dw[j * 14 + k + 1218] += f[i * 28 + j + 0] * b[i * 14 + k + 84];
-            }
+                for (int j = 0; j < 28; j++)
+                    for (int k = 0; k < 14; k++) {
+                        b[i * 28 + j + 308] += b[i * 14 + k + 84] * w[j * 14 + k + 1218];
+                        dw[j * 14 + k + 1218] += f[i * 28 + j + 0] * b[i * 14 + k + 84];
+                    }
         }
         {
             int xp = 210, yp = 224, dxp = 112, dyp = 98;
@@ -246,11 +253,11 @@ public class LSTM extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 28; j++)
-            for (int k = 0; k < 14; k++) {
-                b[i * 28 + j + 308] += b[i * 14 + k + 126] * w[j * 14 + k + 812];
-                dw[j * 14 + k + 812] += f[i * 28 + j + 0] * b[i * 14 + k + 126];
-            }
+                for (int j = 0; j < 28; j++)
+                    for (int k = 0; k < 14; k++) {
+                        b[i * 28 + j + 308] += b[i * 14 + k + 126] * w[j * 14 + k + 812];
+                        dw[j * 14 + k + 812] += f[i * 28 + j + 0] * b[i * 14 + k + 126];
+                    }
         }
         {
             int dap = 210, dbp = 154;
@@ -282,11 +289,11 @@ public class LSTM extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 28; j++)
-            for (int k = 0; k < 14; k++) {
-                b[i * 28 + j + 308] += b[i * 14 + k + 196] * w[j * 14 + k + 406];
-                dw[j * 14 + k + 406] += f[i * 28 + j + 0] * b[i * 14 + k + 196];
-            }
+                for (int j = 0; j < 28; j++)
+                    for (int k = 0; k < 14; k++) {
+                        b[i * 28 + j + 308] += b[i * 14 + k + 196] * w[j * 14 + k + 406];
+                        dw[j * 14 + k + 406] += f[i * 28 + j + 0] * b[i * 14 + k + 196];
+                    }
         }
         {
             int ap = 98, bp = 14;
@@ -311,11 +318,11 @@ public class LSTM extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 28; j++)
-            for (int k = 0; k < 14; k++) {
-                b[i * 28 + j + 308] += b[i * 14 + k + 252] * w[j * 14 + k + 0];
-                dw[j * 14 + k + 0] += f[i * 28 + j + 0] * b[i * 14 + k + 252];
-            }
+                for (int j = 0; j < 28; j++)
+                    for (int k = 0; k < 14; k++) {
+                        b[i * 28 + j + 308] += b[i * 14 + k + 252] * w[j * 14 + k + 0];
+                        dw[j * 14 + k + 0] += f[i * 28 + j + 0] * b[i * 14 + k + 252];
+                    }
         }
         {
             int xp = 42, yp = 56, dxp = 280, dyp = 266;
@@ -332,18 +339,19 @@ public class LSTM extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 28; j++)
-            for (int k = 0; k < 14; k++) {
-                b[i * 28 + j + 308] += b[i * 14 + k + 294] * w[j * 14 + k + 1624];
-                dw[j * 14 + k + 1624] += f[i * 28 + j + 0] * b[i * 14 + k + 294];
-            }
+                for (int j = 0; j < 28; j++)
+                    for (int k = 0; k < 14; k++) {
+                        b[i * 28 + j + 308] += b[i * 14 + k + 294] * w[j * 14 + k + 1624];
+                        dw[j * 14 + k + 1624] += f[i * 28 + j + 0] * b[i * 14 + k + 294];
+                    }
         }
         {
-            int dtp = 0;
+            int dtp = 308;
             for (int dfp = 0; dfp < 14; dfp++)
-                x[dfp] += f[dtp++];
+                dx[dfp] += b[dtp++];
             for (int dfp = 28; dfp < 42; dfp++)
-                x[dfp] += f[dtp++];
+                dx[dfp] += b[dtp++];
         }
+
     }
 }

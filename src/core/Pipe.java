@@ -21,9 +21,9 @@ public class Pipe<L, M, R> implements MultiVarDiffStruct<L, R> {
     }
 
     public final MultiVarDiffStruct<L, M> first;
-    public final MultiVarDiffStruct<M, R> secnd;
-
     public final int firstBvLen, secndBvLen;
+
+    public final MultiVarDiffStruct<M, R> secnd;
 
     public Pipe(MultiVarDiffStruct<L, M> first, MultiVarDiffStruct<M, R> secnd) {
         this.first = first;
@@ -38,10 +38,30 @@ public class Pipe<L, M, R> implements MultiVarDiffStruct<L, R> {
     }
 
     @Override
+    public BoundVarShape boundVarShape() {
+        return first.boundVarShape().concat(secnd.boundVarShape());
+    }
+
+    @Override
+    public Object freeVarType() {
+        return first.freeVarType();
+    }
+
+    @Override
+    public double[][] genBoundVars() {
+        return ArrayUtils.addAll(first.genBoundVars(), secnd.genBoundVars());
+    }
+
+    @Override
+    public Object outputType() {
+        return secnd.outputType();
+    }
+
+    @Override
     public Result<Pair<L, double[][]>, R> result(L lft, double[]... boundVar) {
 
         double[][] fbv = Arrays.copyOfRange(boundVar, 0, firstBvLen);
-        double[][] sbv = Arrays.copyOfRange(boundVar, firstBvLen, secndBvLen);
+        double[][] sbv = Arrays.copyOfRange(boundVar, firstBvLen, boundVar.length);
 
         Result<Pair<L, double[][]>, M> resultLM = first.result(lft, fbv);
 
@@ -57,6 +77,7 @@ public class Pipe<L, M, R> implements MultiVarDiffStruct<L, R> {
             public Pair<L, double[][]> apply(R dr) {
                 Pair<M, double[][]> dMR = ds.apply(dr);
                 Pair<L, double[][]> dLM = df.apply(dMR.getLeft());
+
                 return Pair.of(dLM.getLeft(), ArrayUtils.addAll(dLM.getRight(), dMR.getRight()));
             }
         }, resultMR.value());
@@ -65,26 +86,6 @@ public class Pipe<L, M, R> implements MultiVarDiffStruct<L, R> {
     @Override
     public String toString() {
         return first + " => " + secnd;
-    }
-
-    @Override
-    public double[][] genBoundVars() {
-        return ArrayUtils.addAll(first.genBoundVars(), secnd.genBoundVars());
-    }
-
-    @Override
-    public Object outputType() {
-        return secnd.outputType();
-    }
-
-    @Override
-    public BoundVarShape boundVarShape() {
-        return first.boundVarShape().concat(secnd.boundVarShape());
-    }
-
-    @Override
-    public Object freeVarType() {
-        return first.freeVarType();
     }
 
 }

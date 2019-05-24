@@ -9,6 +9,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import core.MultiVarDiffStruct;
 import core.ParallelVDiffStruct;
 import core.Pipe;
+import core.WrapVector;
 import dataset.Convolution;
 import dataset.Deconvolution;
 import dataset.ReconstructDataset;
@@ -31,11 +32,11 @@ public class BuildGanUnits {
         DisEncoder encoder = new DisEncoder();
         DisDecoder decoder = new DisDecoder();
 
-        Convolution convolution = new SymConvolution(convUnit.ySize, convUnit, convUnit);
+        Convolution convolution = new SymConvolution(DataReader.numObjects, DataReader.numFeatures, convUnit, convUnit);
 
-        MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(false, encoder));
+        MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(encoder, DataReader.numObjects, DataReader.numFeatures));
         MultiVarDiffStruct<double[], double[]> mdecoder = MultiVarDiffStruct.convert(decoder);
-        core.Concat<double[][][]> concat = new core.Concat<>(Pipe.of(pencoder, convolution));
+        core.Concat<double[][][], double[]> concat = new core.Concat<>(Pipe.of(pencoder, convolution), MultiVarDiffStruct.convertFun(new WrapVector(23)));
 
         return Pipe.of(concat, mdecoder);
     }
@@ -48,10 +49,10 @@ public class BuildGanUnits {
 
         MultiVarDiffStruct<double[], double[]> mencoder = MultiVarDiffStruct.convert(encoder);
 
-        MultiVarDiffStruct<double[], double[][][]> deconvolution = new Deconvolution(decUnit.xSize - 4, decUnit, decUnit, DataReader.numObjects, DataReader.numFeatures);
+        MultiVarDiffStruct<double[], double[][][]> deconvolution = new Deconvolution(DataReader.numObjects, DataReader.numFeatures, decUnit, decUnit);
 
-        MultiVarDiffStruct<double[][][], double[][][]> pdecoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(false, decoder));
-        MultiVarDiffStruct<double[][][], double[][][]> rec = MultiVarDiffStruct.convertDS(new ReconstructDataset());
+        MultiVarDiffStruct<double[][][], double[][][]> pdecoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(decoder, DataReader.numObjects, DataReader.numFeatures));
+        MultiVarDiffStruct<double[][][], double[][][]> rec = MultiVarDiffStruct.convertFun(new ReconstructDataset(DataReader.numObjects, DataReader.numFeatures));
 
         return Pipe.of(mencoder, deconvolution, pdecoder, rec);
     }

@@ -18,8 +18,23 @@ public class ParallelVDiffStruct implements VarDiffStruct<double[][][], double[]
     }
 
     @Override
+    public TensorShape freeVarType() {
+        return new TensorShape(rows, cols, inputDepth);
+    }
+
+    @Override
+    public double[] genBoundVars() {
+        return base.genBoundVars();
+    }
+
+    @Override
     public int numBoundVars() {
         return base.numBoundVars();
+    }
+
+    @Override
+    public TensorShape outputType() {
+        return new TensorShape(rows, cols, outputDepth);
     }
 
     @Override
@@ -65,21 +80,6 @@ public class ParallelVDiffStruct implements VarDiffStruct<double[][][], double[]
                 return Pair.of(deltaInput, deltaBounVar);
             }
         }, output);
-    }
-
-    @Override
-    public double[] genBoundVars() {
-        return base.genBoundVars();
-    }
-
-    @Override
-    public TensorShape outputType() {
-        return new TensorShape(rows, cols, outputDepth);
-    }
-
-    @Override
-    public TensorShape freeVarType() {
-        return new TensorShape(rows, cols, inputDepth);
     }
 
 }

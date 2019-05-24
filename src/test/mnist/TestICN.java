@@ -24,7 +24,6 @@ import core.Result;
 import dataset.Convolution;
 import dataset.ImgConvolution;
 import grad.MAdaGrad;
-import grad.MSGD;
 
 public class TestICN extends JFrame {
 
@@ -153,27 +152,19 @@ public class TestICN extends JFrame {
 
             LSTM hvFold = new LSTM();
 
-            Convolution convolution = new ImgConvolution(hvFold.ySize, hvFold, hvFold);
+            Convolution convolution = new ImgConvolution(28, 28, hvFold, hvFold);
 
             Encoder encoder = new Encoder();
             Decoder decoder = new Decoder();
 
-            MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(false, encoder));
+            MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(encoder, 28, 28));
             MultiVarDiffStruct<double[], double[]> mdecoder = MultiVarDiffStruct.convert(decoder);
             Pipe<double[][][], ?, double[]> net = Pipe.of(pencoder, convolution, mdecoder);
 
-            double[] enc = new double[encoder.numBoundVars()];
-            double[] dec = new double[decoder.numBoundVars()];
-            double[] hor = new double[hvFold.numBoundVars()];
-            double[] ver = new double[hvFold.numBoundVars()];
+            double[][] var = net.genBoundVars();
 
-            Consumer<double[][]> grad = new MAdaGrad(new double[][] { enc, hor, ver, dec }, 0.002, 0.9, 0.999);
+            Consumer<double[][]> grad = new MAdaGrad(var, 0.002, 0.9, 0.999);
             // Consumer<double[][]> grad = new MSGD(new double[][] { enc, hor, ver, dec }, 0.0001);
-
-            encoder.init(enc);
-            decoder.init(dec);
-            hvFold.init(hor);
-            hvFold.init(ver);
 
             int batch = 20;
 
@@ -219,7 +210,7 @@ public class TestICN extends JFrame {
                         }
                     }
 
-                    Result<Pair<double[][][], double[][]>, double[]> result = net.result(obj, enc, hor, ver, dec);
+                    Result<Pair<double[][][], double[][]>, double[]> result = net.result(obj, var);
 
                     double[] y = result.value();
                     double[] dy = new double[n];
@@ -229,6 +220,18 @@ public class TestICN extends JFrame {
                     }
 
                     Pair<double[][][], double[][]> delta = result.derivative().apply(dy);
+                    //
+                    // for (double[] array : delta.getRight()) {
+                    // for (int i = 0; i < 20; i++) {
+                    // System.out.printf(Locale.ENGLISH, "%7.3f ", 10000 * array[i * (array.length / 20)]);
+                    // }
+                    // System.out.println();
+                    // }
+                    // System.out.println();
+                    // try {
+                    // Thread.sleep(1000);
+                    // } catch (InterruptedException e1) {
+                    // }
 
                     grad.accept(delta.getRight());
 
@@ -241,25 +244,17 @@ public class TestICN extends JFrame {
                     }
 
                     cm[e][r] += 1;
-
                 }
+
                 if (iter % 40 == 0) {
-                    for (int i = 0; i < 20; i++) {
-                        System.out.printf(Locale.ENGLISH, "%7.3f ", enc[i * (enc.length / 20)]);
+
+                    for (double[] array : var) {
+                        for (int i = 0; i < 20; i++) {
+                            System.out.printf(Locale.ENGLISH, "%7.3f ", array[i * (array.length / 20)]);
+                        }
+                        System.out.println();
                     }
-                    System.out.println();
-                    for (int i = 0; i < 20; i++) {
-                        System.out.printf(Locale.ENGLISH, "%7.3f ", hor[i * (hor.length / 20)]);
-                    }
-                    System.out.println();
-                    for (int i = 0; i < 20; i++) {
-                        System.out.printf(Locale.ENGLISH, "%7.3f ", ver[i * (ver.length / 20)]);
-                    }
-                    System.out.println();
-                    for (int i = 0; i < 20; i++) {
-                        System.out.printf(Locale.ENGLISH, "%7.3f ", dec[i * (dec.length / 20)]);
-                    }
-                    System.out.println();
+
                 }
 
                 testImgs.draw(iter, cm);

@@ -14,6 +14,21 @@ public interface MultiVarDiffStruct<F, T> extends DiffFunct<Pair<F, double[][]>,
             }
 
             @Override
+            public Object freeVarType() {
+                return varDiffStruct.freeVarType();
+            }
+
+            @Override
+            public double[][] genBoundVars() {
+                return new double[][] { varDiffStruct.genBoundVars() };
+            }
+
+            @Override
+            public Object outputType() {
+                return varDiffStruct.outputType();
+            }
+
+            @Override
             public Result<Pair<F, double[][]>, T> result(F freeVar, double[]... boundVar) {
                 Result<Pair<F, double[]>, T> result = varDiffStruct.result(freeVar, boundVar[0]);
                 return new Result<Pair<F, double[][]>, T>(new Function<T, Pair<F, double[][]>>() {
@@ -29,30 +44,30 @@ public interface MultiVarDiffStruct<F, T> extends DiffFunct<Pair<F, double[][]>,
             public String toString() {
                 return varDiffStruct.toString();
             }
-
-            @Override
-            public double[][] genBoundVars() {
-                return new double[][] { varDiffStruct.genBoundVars() };
-            }
-
-            @Override
-            public Object outputType() {
-                return varDiffStruct.outputType();
-            }
-
-            @Override
-            public Object freeVarType() {
-                return varDiffStruct.freeVarType();
-            }
         };
     }
 
-    public static <F, T> MultiVarDiffStruct<F, T> convertDS(DiffFunct<F, T> diffFunct) {
+    public static <F, T> MultiVarDiffStruct<F, T> convertFun(DiffFunct<F, T> diffFunct) {
         return new MultiVarDiffStruct<F, T>() {
 
             @Override
             public BoundVarShape boundVarShape() {
                 return new BoundVarShape();
+            }
+
+            @Override
+            public Object freeVarType() {
+                return diffFunct.inputType();
+            }
+
+            @Override
+            public double[][] genBoundVars() {
+                return new double[0][];
+            }
+
+            @Override
+            public Object outputType() {
+                return diffFunct.outputType();
             }
 
             @Override
@@ -73,27 +88,19 @@ public interface MultiVarDiffStruct<F, T> extends DiffFunct<Pair<F, double[][]>,
             public String toString() {
                 return diffFunct.toString();
             }
-
-            @Override
-            public double[][] genBoundVars() {
-                return new double[0][];
-            }
-
-            @Override
-            public Object outputType() {
-                return diffFunct.outputType();
-            }
-
-            @Override
-            public Object freeVarType() {
-                return diffFunct.inputType();
-            }
         };
     }
 
     public BoundVarShape boundVarShape();
 
+    public Object freeVarType();
+
     public double[][] genBoundVars();
+
+    @Override
+    public default Pair<Object, BoundVarShape> inputType() {
+        return Pair.of(freeVarType(), boundVarShape());
+    }
 
     public Result<Pair<F, double[][]>, T> result(F freeVar, double[]... boundVar);
 
@@ -101,12 +108,5 @@ public interface MultiVarDiffStruct<F, T> extends DiffFunct<Pair<F, double[][]>,
     public default Result<Pair<F, double[][]>, T> result(Pair<F, double[][]> input) {
         return result(input.getLeft(), input.getRight());
     }
-
-    @Override
-    public default Pair<Object, BoundVarShape> inputType() {
-        return Pair.of(freeVarType(), boundVarShape());
-    }
-
-    public Object freeVarType();
 
 }

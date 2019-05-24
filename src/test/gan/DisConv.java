@@ -176,10 +176,10 @@ public class DisConv extends VectorDiffStruct {
     public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
         {
             int dtp = 0;
-            for (int dfp = 368; dfp < 384; dfp++)
-                f[dfp] += y[dtp++];
-            for (int dfp = 336; dfp < 352; dfp++)
-                f[dfp] += y[dtp++];
+            for (int dfp = 0; dfp < 16; dfp++)
+                b[dfp] += dy[dtp++];
+            for (int dfp = 32; dfp < 48; dfp++)
+                b[dfp] += dy[dtp++];
         }
         {
             int ap = 64, bp = 352;
@@ -339,11 +339,11 @@ public class DisConv extends VectorDiffStruct {
             }
         }
         {
-            int dtp = 0;
+            int dtp = 352;
             for (int dfp = 0; dfp < 16; dfp++)
-                x[dfp] += f[dtp++];
+                dx[dfp] += b[dtp++];
             for (int dfp = 32; dfp < 48; dfp++)
-                x[dfp] += f[dtp++];
+                dx[dfp] += b[dtp++];
         }
     }
 }

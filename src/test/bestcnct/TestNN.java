@@ -22,6 +22,7 @@ import core.MultiVarDiffStruct;
 import core.ParallelVDiffStruct;
 import core.Pipe;
 import core.Result;
+import core.WrapVector;
 import dataset.Convolution;
 import dataset.SymConvolution;
 import grad.MAdaGrad;
@@ -32,15 +33,18 @@ public class TestNN {
 
     // final HVFold hvFold = new HVFold();
     final LSTM hvFold = new LSTM();
-    final Convolution convolution = new SymConvolution(hvFold.ySize, hvFold, hvFold);
+    final Convolution convolution = new SymConvolution(128, 16, hvFold, hvFold);
 
     final Encoder encoder = new Encoder();
     final Decoder decoder = new Decoder();
     final Simple simple = new Simple();
 
-    final MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(false, encoder));
+    final MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(encoder, 128, 16));
     final MultiVarDiffStruct<double[], double[]> mdecoder = MultiVarDiffStruct.convert(decoder);
-    final Concat<double[][][]> concat = new Concat<>(Pipe.of(pencoder, convolution));
+
+    final MultiVarDiffStruct<double[][][], double[]> encov = Pipe.of(pencoder, convolution);
+
+    final Concat<double[][][], double[]> concat = new Concat<double[][][], double[]>(encov, MultiVarDiffStruct.convertFun(new WrapVector(23)));
 
     final Pipe<Pair<double[][][], double[]>, double[], double[]> net = Pipe.of(concat, mdecoder);
 

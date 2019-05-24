@@ -31,13 +31,13 @@ public class TestNN {
 
     // final HVFold hvFold = new HVFold();
     final LSTM hvFold = new LSTM();
-    final Convolution convolution = new SymConvolution(hvFold.ySize, hvFold, hvFold);
+    final Convolution convolution = new SymConvolution(128, 16, hvFold, hvFold);
 
     final Encoder encoder = new Encoder();
     final Decoder decoder = new Decoder();
     final Simple simple = new Simple();
 
-    final MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(true, encoder));
+    final MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(encoder, 128, 16));
     final MultiVarDiffStruct<double[], double[]> mdecoder = MultiVarDiffStruct.convert(decoder);
     final Pipe<double[][][], ?, double[]> net = Pipe.of(pencoder, convolution, mdecoder);
 

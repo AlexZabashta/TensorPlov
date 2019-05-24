@@ -187,10 +187,10 @@ public class CompilerToSrc {
             program.frwrd.add(TAB + t.base + "[tp++] += " + f.base + "[fp];");
         }
 
-        Variable dt = context.f.get(node);
+        Variable dt = context.b.get(node);
         program.bkwrd.add("int dtp = " + dt.from + ";");
         for (int i = 0; i < len; i++) {
-            Variable df = context.f.get(node.subNodes[i]);
+            Variable df = context.b.get(node.subNodes[i]);
             program.bkwrd.add("for (int dfp = " + df.from + "; dfp < " + df.to + "; dfp++)");
             program.bkwrd.add(TAB + df.base + "[dfp] += " + dt.base + "[dtp++];");
         }

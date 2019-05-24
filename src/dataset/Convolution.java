@@ -1,6 +1,7 @@
 package dataset;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.function.Function;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -70,6 +71,7 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
         @Override
         double[] backward(Memory memory, double[] dy, double[] sdh, double[] sdv) {
             Pair<double[], double[]> dxh = derivative.apply(dy);
+
             addWithWeight(dxh.getRight(), weight(), sdh);
             memory.normH += weight();
             return dxh.getLeft();
@@ -140,6 +142,7 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
             Pair<double[], double[]> dxv = derivative.apply(dy);
             addWithWeight(dxv.getRight(), weight(), sdv);
             memory.normV += weight();
+
             return dxv.getLeft();
         }
     }

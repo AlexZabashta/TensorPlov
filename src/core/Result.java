@@ -12,22 +12,22 @@ public class Result<Domain, Codomain> implements Function<Codomain, Domain>, Sup
         this.value = value;
     }
 
-    public Function<Codomain, Domain> derivative() {
-        return derivative;
-    }
-
-    public Codomain value() {
-        return value;
-    }
-
     @Override
     public Domain apply(Codomain deltaOutput) {
         return derivative().apply(deltaOutput);
     }
 
+    public Function<Codomain, Domain> derivative() {
+        return derivative;
+    }
+
     @Override
     public Codomain get() {
         return value();
+    }
+
+    public Codomain value() {
+        return value;
     }
 
 }

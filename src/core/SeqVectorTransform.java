@@ -15,16 +15,16 @@ public class SeqVectorTransform extends VectorDiffStruct {
     }
 
     @Override
-    public void forward(double[] x, double[] w, double[] y, double[] f) {
-        for (VectorTransform transform : transforms) {
-            transform.forward(x, w, y, f);
+    public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
+        for (int i = transforms.length - 1; i >= 0; i--) {
+            transforms[i].backward(x, w, y, dx, dw, dy, f, b);
         }
     }
 
     @Override
-    public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
-        for (int i = transforms.length - 1; i >= 0; i--) {
-            transforms[i].backward(x, w, y, dx, dw, dy, f, b);
+    public void forward(double[] x, double[] w, double[] y, double[] f) {
+        for (VectorTransform transform : transforms) {
+            transform.forward(x, w, y, f);
         }
     }
 

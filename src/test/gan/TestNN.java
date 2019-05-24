@@ -63,12 +63,32 @@ public class TestNN {
         List<Dataset> train = datasets.getLeft();
         List<Dataset> test = datasets.getRight();
 
+        double baseMF = 0;
+
+        for (Dataset target : test) {
+            double best = Double.POSITIVE_INFINITY;
+            for (Dataset dataset : train) {
+                double sum = 0;
+                for (int i = 0; i < 23; i++) {
+                    double diff = dataset.mf[i] - target.mf[i];
+                    sum += diff * diff;
+                }
+                best = Math.min(best, sum);
+            }
+            baseMF += best;
+        }
+
+        baseMF /= test.size();
+
         Consumer<double[][]> disGrad = new MAdaGrad(disValues, 0.001, 0.9, 0.999);
         Consumer<double[][]> genGrad = new MAdaGrad(genValues, 0.002, 0.9, 0.999);
 
         int batch = 6;
 
         try (PrintWriter out = new PrintWriter("result.txt")) {
+            System.out.println(baseMF);
+            out.println(baseMF);
+            out.flush();
             for (int epoch = 1; epoch < 1000; epoch++) {
                 double trainG = 0, trainR = 0, trainL = 0;
 

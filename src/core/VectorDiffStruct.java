@@ -45,16 +45,8 @@ public abstract class VectorDiffStruct implements VarDiffStruct<double[], double
     }
 
     @Override
-    public Result<Pair<double[], double[]>, double[]> result(double[] x, double[] w) {
-        assert x.length == xSize;
-        assert w.length == wSize;
-
-        double[] y = new double[ySize];
-        double[] f = new double[fSize];
-
-        forward(x, w, y, f);
-
-        return new Result<>(new Memory(x, w, y, f), y);
+    public Object freeVarType() {
+        return new VectorShape(xSize);
     }
 
     @Override
@@ -65,8 +57,8 @@ public abstract class VectorDiffStruct implements VarDiffStruct<double[], double
     }
 
     @Override
-    public Object freeVarType() {
-        return new VectorShape(xSize);
+    public int numBoundVars() {
+        return wSize;
     }
 
     @Override
@@ -75,8 +67,16 @@ public abstract class VectorDiffStruct implements VarDiffStruct<double[], double
     }
 
     @Override
-    public int numBoundVars() {
-        return wSize;
+    public Result<Pair<double[], double[]>, double[]> result(double[] x, double[] w) {
+        assert x.length == xSize;
+        assert w.length == wSize;
+
+        double[] y = new double[ySize];
+        double[] f = new double[fSize];
+
+        forward(x, w, y, f);
+
+        return new Result<>(new Memory(x, w, y, f), y);
     }
 
 }

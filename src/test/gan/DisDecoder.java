@@ -100,10 +100,10 @@ public class DisDecoder extends VectorDiffStruct {
     public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
         {
             int dtp = 0;
-            for (int dfp = 105; dfp < 108; dfp++)
-                f[dfp] += y[dtp++];
-            for (int dfp = 110; dfp < 111; dfp++)
-                f[dfp] += y[dtp++];
+            for (int dfp = 3; dfp < 6; dfp++)
+                b[dfp] += dy[dtp++];
+            for (int dfp = 0; dfp < 1; dfp++)
+                b[dfp] += dy[dtp++];
         }
         {
             int xp = 109, yp = 110, dxp = 1, dyp = 0;

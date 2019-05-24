@@ -233,14 +233,14 @@ public class GenDeconv extends VectorDiffStruct {
     public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
         {
             int dtp = 0;
-            for (int dfp = 256; dfp < 272; dfp++)
-                f[dfp] += y[dtp++];
             for (int dfp = 224; dfp < 240; dfp++)
-                f[dfp] += y[dtp++];
-            for (int dfp = 480; dfp < 496; dfp++)
-                f[dfp] += y[dtp++];
-            for (int dfp = 448; dfp < 464; dfp++)
-                f[dfp] += y[dtp++];
+                b[dfp] += dy[dtp++];
+            for (int dfp = 256; dfp < 272; dfp++)
+                b[dfp] += dy[dtp++];
+            for (int dfp = 0; dfp < 16; dfp++)
+                b[dfp] += dy[dtp++];
+            for (int dfp = 32; dfp < 48; dfp++)
+                b[dfp] += dy[dtp++];
         }
         {
             int ap = 304, bp = 464;

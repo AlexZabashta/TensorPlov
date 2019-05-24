@@ -1,14 +1,11 @@
 package dataset;
 
-import java.util.Arrays;
-
 import org.apache.commons.lang3.tuple.Pair;
 
 import core.Result;
 import core.VarDiffStruct;
 
 public class SymConvolution extends Convolution {
-
     public SymConvolution(int rows, int cols, VarDiffStruct<double[], double[]> horzFold, VarDiffStruct<double[], double[]> vertFold) {
         super(rows, cols, horzFold, vertFold);
     }
@@ -17,16 +14,16 @@ public class SymConvolution extends Convolution {
     Result<Pair<double[][][], double[][]>, double[]> result(Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
         int curRows = rows, curCols = cols;
 
-        long searchTime = 0;
-        long convTime = 0;
-        long time1, time2, time3;
+        // long searchTime = 0;
+        // long convTime = 0;
+        // long time1, time2, time3;
 
         while (curRows > 1 || curCols > 1) {
             double rowCos = -1, colCos = -1;
             int rowA = 0, rowB = 1;
             int colA = 0, colB = 1;
 
-            time1 = System.currentTimeMillis();
+            // time1 = System.currentTimeMillis();
 
             for (int rowU = 1; rowU < curRows; rowU++) {
                 for (int rowD = 0; rowD < rowU; rowD++) {
@@ -91,9 +88,9 @@ public class SymConvolution extends Convolution {
                 }
             }
 
-            time2 = System.currentTimeMillis();
+            // time2 = System.currentTimeMillis();
 
-            searchTime += time2 - time1;
+            // searchTime += time2 - time1;
 
             if (colCos > rowCos) {
                 --curCols;
@@ -112,9 +109,9 @@ public class SymConvolution extends Convolution {
                 }
             }
 
-            time3 = System.currentTimeMillis();
+            // time3 = System.currentTimeMillis();
 
-            convTime += time3 - time2;
+            // convTime += time3 - time2;
         }
 
         Node root = nodes[0][0];
@@ -122,6 +119,11 @@ public class SymConvolution extends Convolution {
 
         return new Result<>(new Memory(root), root.values);
 
+    }
+
+    @Override
+    public String toString() {
+        return "SymConvolution [rows=" + rows + ", cols=" + cols + ", depth=" + depth + ", horzFold=" + horzFold + ", vertFold=" + vertFold + "]";
     }
 
 }
