@@ -48,7 +48,7 @@ public class BuildGanUnits {
 
         MultiVarDiffStruct<double[], double[]> mencoder = MultiVarDiffStruct.convert(encoder);
 
-        MultiVarDiffStruct<double[], double[][][]> deconvolution = new Deconvolution(decUnit.xSize, decUnit, decUnit, DataReader.numObjects, DataReader.numObjects);
+        MultiVarDiffStruct<double[], double[][][]> deconvolution = new Deconvolution(decUnit.xSize - 4, decUnit, decUnit, DataReader.numObjects, DataReader.numFeatures);
 
         MultiVarDiffStruct<double[][][], double[][][]> pdecoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(false, decoder));
         MultiVarDiffStruct<double[][][], double[][][]> rec = MultiVarDiffStruct.convertDS(new ReconstructDataset());

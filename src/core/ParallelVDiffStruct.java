@@ -7,11 +7,14 @@ import org.apache.commons.lang3.tuple.Pair;
 public class ParallelVDiffStruct implements VarDiffStruct<double[][][], double[][][]> {
 
     public final VarDiffStruct<double[], double[]> base;
-    public final boolean transferError;
+    final int rows, cols, inputDepth, outputDepth;
 
-    public ParallelVDiffStruct(boolean transferError, VarDiffStruct<double[], double[]> base) {
-        this.transferError = transferError;
+    public ParallelVDiffStruct(VarDiffStruct<double[], double[]> base, int rows, int cols) {
         this.base = base;
+        this.rows = rows;
+        this.cols = cols;
+        this.inputDepth = ((VectorShape) base.freeVarType()).length;
+        this.outputDepth = ((VectorShape) base.outputType()).length;
     }
 
     @Override
@@ -21,7 +24,7 @@ public class ParallelVDiffStruct implements VarDiffStruct<double[][][], double[]
 
     @Override
     public Result<Pair<double[][][], double[]>, double[][][]> result(double[][][] input, double[] bounVar) {
-        final int rows = input.length, cols = input[0].length;
+
         double[][][] output = new double[rows][cols][];
 
         @SuppressWarnings("unchecked")
@@ -48,18 +51,6 @@ public class ParallelVDiffStruct implements VarDiffStruct<double[][][], double[]
                         double[] subOutput = deltaOutput[row][col];
                         Pair<double[], double[]> delta = der[row][col].apply(subOutput);
                         double[] subInput = delta.getLeft();
-
-                        if (transferError) {
-                            double sum = 0;
-                            for (int i = 0; i < subOutput.length; i++) {
-                                sum += subOutput[i] * subOutput[i];
-                            }
-                            double error = Math.sqrt(sum);
-
-                            for (int i = 0; i < subInput.length; i++) {
-                                subInput[i] *= error;
-                            }
-                        }
                         deltaInput[row][col] = subInput;
 
                         double[] dbv = delta.getRight();
@@ -79,6 +70,16 @@ public class ParallelVDiffStruct implements VarDiffStruct<double[][][], double[]
     @Override
     public double[] genBoundVars() {
         return base.genBoundVars();
+    }
+
+    @Override
+    public TensorShape outputType() {
+        return new TensorShape(rows, cols, outputDepth);
+    }
+
+    @Override
+    public TensorShape freeVarType() {
+        return new TensorShape(rows, cols, inputDepth);
     }
 
 }

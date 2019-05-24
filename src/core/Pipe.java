@@ -3,6 +3,7 @@ package core;
 import java.util.Arrays;
 import java.util.function.Function;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 public class Pipe<L, M, R> implements MultiVarDiffStruct<L, R> {
@@ -21,37 +22,33 @@ public class Pipe<L, M, R> implements MultiVarDiffStruct<L, R> {
 
     public final MultiVarDiffStruct<L, M> first;
     public final MultiVarDiffStruct<M, R> secnd;
-    public final int firstLength, secndLength;
-    private final int[] numBoundVars;
+
+    public final int firstBvLen, secndBvLen;
 
     public Pipe(MultiVarDiffStruct<L, M> first, MultiVarDiffStruct<M, R> secnd) {
         this.first = first;
         this.secnd = secnd;
-        int[] firstNum = first.numBoundVars();
-        int[] secndNum = secnd.numBoundVars();
-        firstLength = firstNum.length;
-        secndLength = secndNum.length;
 
-        numBoundVars = Arrays.copyOf(firstNum, firstLength + secndLength);
-        System.arraycopy(secndNum, 0, numBoundVars, firstLength, secndLength);
+        if (!first.outputType().equals(secnd.freeVarType())) {
+            throw new IllegalArgumentException("first.outputType() != secnd.freeVarType()");
+        }
+
+        this.firstBvLen = first.boundVarShape().length();
+        this.secndBvLen = secnd.boundVarShape().length();
     }
 
     @Override
-    public int[] numBoundVars() {
-        return numBoundVars.clone();
-    }
+    public Result<Pair<L, double[][]>, R> result(L lft, double[]... boundVar) {
 
-    @Override
-    public Result<Pair<L, double[][]>, R> result(L lft, double[]... bounVar) {
-        double[][] firstBounVar = Arrays.copyOf(bounVar, firstLength);
-        double[][] secndBounVar = Arrays.copyOfRange(bounVar, firstLength, numBoundVars.length);
+        double[][] fbv = Arrays.copyOfRange(boundVar, 0, firstBvLen);
+        double[][] sbv = Arrays.copyOfRange(boundVar, firstBvLen, secndBvLen);
 
-        Result<Pair<L, double[][]>, M> resultLM = first.result(lft, firstBounVar);
+        Result<Pair<L, double[][]>, M> resultLM = first.result(lft, fbv);
 
         Function<M, Pair<L, double[][]>> df = resultLM.derivative();
 
         M mid = resultLM.value();
-        Result<Pair<M, double[][]>, R> resultMR = secnd.result(mid, secndBounVar);
+        Result<Pair<M, double[][]>, R> resultMR = secnd.result(mid, sbv);
 
         Function<R, Pair<M, double[][]>> ds = resultMR.derivative();
 
@@ -60,11 +57,7 @@ public class Pipe<L, M, R> implements MultiVarDiffStruct<L, R> {
             public Pair<L, double[][]> apply(R dr) {
                 Pair<M, double[][]> dMR = ds.apply(dr);
                 Pair<L, double[][]> dLM = df.apply(dMR.getLeft());
-
-                double[][] dbv = Arrays.copyOf(dLM.getRight(), firstLength + secndLength);
-                System.arraycopy(dMR.getRight(), 0, dbv, firstLength, secndLength);
-
-                return Pair.of(dLM.getLeft(), dbv);
+                return Pair.of(dLM.getLeft(), ArrayUtils.addAll(dLM.getRight(), dMR.getRight()));
             }
         }, resultMR.value());
     }
@@ -76,15 +69,22 @@ public class Pipe<L, M, R> implements MultiVarDiffStruct<L, R> {
 
     @Override
     public double[][] genBoundVars() {
-        double[][] firstBounVar = first.genBoundVars();
-        double[][] secndBounVar = secnd.genBoundVars();
+        return ArrayUtils.addAll(first.genBoundVars(), secnd.genBoundVars());
+    }
 
-        double[][] bounVar = new double[firstLength + secndLength][];
+    @Override
+    public Object outputType() {
+        return secnd.outputType();
+    }
 
-        System.arraycopy(firstBounVar, 0, bounVar, 0, firstLength);
-        System.arraycopy(secndBounVar, 0, bounVar, firstLength, secndLength);
+    @Override
+    public BoundVarShape boundVarShape() {
+        return first.boundVarShape().concat(secnd.boundVarShape());
+    }
 
-        return bounVar;
+    @Override
+    public Object freeVarType() {
+        return first.freeVarType();
     }
 
 }

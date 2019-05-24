@@ -1,5 +1,7 @@
 package dataset;
 
+import java.util.Arrays;
+
 import org.apache.commons.lang3.tuple.Pair;
 
 import core.Result;
@@ -7,32 +9,37 @@ import core.VarDiffStruct;
 
 public class SymConvolution extends Convolution {
 
-    public SymConvolution(int depth, VarDiffStruct<double[], double[]> horzFold, VarDiffStruct<double[], double[]> vertFold) {
-        super(depth, horzFold, vertFold);
+    public SymConvolution(int rows, int cols, VarDiffStruct<double[], double[]> horzFold, VarDiffStruct<double[], double[]> vertFold) {
+        super(rows, cols, horzFold, vertFold);
     }
 
     @Override
-    Result<Pair<double[][][], double[][]>, double[]> result(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
+    Result<Pair<double[][][], double[][]>, double[]> result(Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
         int curRows = rows, curCols = cols;
+
+        long searchTime = 0;
+        long convTime = 0;
+        long time1, time2, time3;
 
         while (curRows > 1 || curCols > 1) {
             double rowCos = -1, colCos = -1;
             int rowA = 0, rowB = 1;
             int colA = 0, colB = 1;
 
+            time1 = System.currentTimeMillis();
+
             for (int rowU = 1; rowU < curRows; rowU++) {
                 for (int rowD = 0; rowD < rowU; rowD++) {
                     double cos = 0;
                     double sumD = 0, sumU = 0;
                     for (int col = 0; col < curCols; col++) {
-                        for (int i = 0; i < depth; i++) {
+                        for (int i = 0; i < depth / 2; i++) {
                             double valD = (nodes[rowD][col]).values[i];
                             double valU = (nodes[rowU][col]).values[i];
 
                             sumD += valD;
                             sumU += valU;
-                            double diff = valD - valU;
-                            cos += diff * diff;
+                            cos += valD * valU;
                         }
                     }
 
@@ -57,14 +64,13 @@ public class SymConvolution extends Convolution {
                     double cos = 0;
                     double sumL = 0, sumR = 0;
                     for (int row = 0; row < curRows; row++) {
-                        for (int i = 0; i < depth; i++) {
+                        for (int i = 0; i < depth / 2; i++) {
                             double valL = (nodes[row][colL]).values[i];
                             double valR = (nodes[row][colR]).values[i];
 
                             sumL += valL;
                             sumR += valR;
-                            double diff = valL - valR;
-                            cos += diff * diff;
+                            cos += valL * valR;
 
                         }
                     }
@@ -85,6 +91,10 @@ public class SymConvolution extends Convolution {
                 }
             }
 
+            time2 = System.currentTimeMillis();
+
+            searchTime += time2 - time1;
+
             if (colCos > rowCos) {
                 --curCols;
                 for (int row = 0; row < curRows; row++) {
@@ -101,10 +111,16 @@ public class SymConvolution extends Convolution {
                     nodes[rowB][col] = nodes[curRows][col];
                 }
             }
+
+            time3 = System.currentTimeMillis();
+
+            convTime += time3 - time2;
         }
 
         Node root = nodes[0][0];
-        return new Result<>(new Memory(root, rows, cols), root.values);
+        // System.err.println(rows + " " + cols + " " + searchTime + " " + convTime); // + " " + Arrays.toString(root.values)
+
+        return new Result<>(new Memory(root), root.values);
 
     }
 

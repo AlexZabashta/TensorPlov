@@ -10,8 +10,15 @@ public interface VarDiffStruct<F, T> extends DiffFunct<Pair<F, double[]>, T> {
         return result(input.getLeft(), input.getRight());
     }
 
-    public Result<Pair<F, double[]>, T> result(F freeVar, double[] bounVar);
+    public Result<Pair<F, double[]>, T> result(F freeVar, double[] boundVar);
 
     public double[] genBoundVars();
+
+    @Override
+    public default Pair<Object, TensorShape> inputType() {
+        return Pair.of(freeVarType(), new TensorShape(numBoundVars()));
+    }
+
+    public Object freeVarType();
 
 }

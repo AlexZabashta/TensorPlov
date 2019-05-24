@@ -59,11 +59,12 @@ public class TestNN {
         ExecutorService executor = Executors.newFixedThreadPool(6);
 
         Pair<List<Dataset>, List<Dataset>> datasets = DataReader.readData("csv", executor);
+
         List<Dataset> train = datasets.getLeft();
         List<Dataset> test = datasets.getRight();
 
         Consumer<double[][]> disGrad = new MAdaGrad(disValues, 0.001, 0.9, 0.999);
-        Consumer<double[][]> genGrad = new MAdaGrad(genValues, 0.001, 0.9, 0.999);
+        Consumer<double[][]> genGrad = new MAdaGrad(genValues, 0.002, 0.9, 0.999);
 
         int batch = 6;
 
@@ -85,11 +86,18 @@ public class TestNN {
                             @Override
                             public Outcome call() throws Exception {
                                 Random random = new Random();
-                                double[] vector = Arrays.copyOf(dataset.mf, 46);
-                                for (int i = 23; i < 46; i++) {
+                                double[] vector = new double[46];
+                                for (int i = 0; i < 46; i++) {
                                     vector[i] = random.nextGaussian();
                                 }
+
+                                long start, finish;
+
+                                start = System.currentTimeMillis();
                                 Result<Pair<double[], double[][]>, double[][][]> gens = gen.result(vector, genValues);
+                                finish = System.currentTimeMillis();
+                                // System.err.println("GEN time = " + (finish - start));
+
                                 double realRate = 0, mfMSE = 0, lmMSE = 0;
 
                                 double[][][] obj = gens.value();
@@ -104,7 +112,10 @@ public class TestNN {
                                     labels[oid] = (2 * oid < objects) ? 0 : 1;
                                 }
 
+                                start = System.currentTimeMillis();
                                 double[] joint = JointDecMF.extract(objects, features, 2, data, labels);
+                                finish = System.currentTimeMillis();
+                                // System.err.println("MFE time = " + (finish - start));
 
                                 for (int i = 0; i < 23; i++) {
                                     double diff = joint[i] - vector[i];
@@ -113,7 +124,10 @@ public class TestNN {
 
                                 double[] fmf = Arrays.copyOf(joint, 23);
 
+                                start = System.currentTimeMillis();
                                 Result<Pair<Pair<double[][][], double[]>, double[][]>, double[]> disf = dis.result(Pair.of(obj, fmf), disValues);
+                                finish = System.currentTimeMillis();
+                                // System.err.println("DIS time = " + (finish - start));
 
                                 double[] disfv = disf.value();
                                 if (disfv[3] > 0) {
@@ -126,17 +140,30 @@ public class TestNN {
                                 disfd[2] = disfv[2] - joint[25];
                                 disfd[3] = disfv[3] - 1;
 
+                                start = System.currentTimeMillis();
                                 double[][][] deltaObj = disf.apply(disfd).getLeft().getLeft();
+                                finish = System.currentTimeMillis();
+                                // System.err.println("DIS' time = " + (finish - start));
 
                                 disfd[0] /= Math.sqrt(2);
                                 disfd[1] /= Math.sqrt(2);
                                 disfd[2] /= Math.sqrt(2);
                                 disfd[3] = disfv[3] + 1;
+
+                                start = System.currentTimeMillis();
                                 Pair<Pair<double[][][], double[]>, double[][]> disfdd = disf.apply(disfd);
+                                finish = System.currentTimeMillis();
+                                // System.err.println("DIS' time = " + (finish - start));
 
+                                start = System.currentTimeMillis();
                                 Pair<double[], double[][]> gend = gens.apply(deltaObj);
+                                finish = System.currentTimeMillis();
+                                // System.err.println("GEN' time = " + (finish - start));
 
+                                start = System.currentTimeMillis();
                                 Result<Pair<Pair<double[][][], double[]>, double[][]>, double[]> disr = dis.result(Pair.of(dataset.dataset, dataset.mf), disValues);
+                                finish = System.currentTimeMillis();
+                                // System.err.println("DIS time = " + (finish - start));
 
                                 double[] disrv = disr.value();
                                 double[] disrd = new double[4];
@@ -151,7 +178,10 @@ public class TestNN {
                                 }
                                 lmMSE += (disrd[0] * disrd[0] + disrd[1] * disrd[1] + disrd[2] * disrd[2]) / 3;
 
+                                start = System.currentTimeMillis();
                                 Pair<Pair<double[][][], double[]>, double[][]> disrrd = disr.apply(disrd);
+                                finish = System.currentTimeMillis();
+                                // System.err.println("DIS' time = " + (finish - start));
 
                                 return new Outcome(realRate, mfMSE, lmMSE, gend.getRight(), disrrd.getRight(), disfdd.getRight());
                             }
@@ -184,7 +214,7 @@ public class TestNN {
 
                 }
 
-                String trainResult = String.format(Locale.ENGLISH, "%d train %.4f %.4f %.4f%n", epoch, trainG / train.size(), trainL / train.size(), trainR / train.size());
+                String trainResult = String.format(Locale.ENGLISH, "%d train %.4f %.4f %.4f", epoch, trainG / train.size(), trainL / train.size(), trainR / train.size());
                 System.out.println(trainResult);
                 out.println(trainResult);
                 out.flush();
@@ -260,7 +290,7 @@ public class TestNN {
                     testR += outcome.realRate;
                 }
 
-                String testResult = String.format(Locale.ENGLISH, "%d test %.4f %.4f %.4f%n", epoch, testG / test.size(), testL / test.size(), testR / test.size());
+                String testResult = String.format(Locale.ENGLISH, "%d test %.4f %.4f %.4f", epoch, testG / test.size(), testL / test.size(), testR / test.size());
                 System.out.println(testResult);
                 out.println(testResult);
                 out.flush();

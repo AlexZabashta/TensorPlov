@@ -4,56 +4,56 @@ import core.VectorDiffStruct;
 import java.util.Random;
 public class GenDeconv extends VectorDiffStruct {
     public GenDeconv() {
-        super(32, 1904, 64, 496, 496);
+        super(36, 2352, 64, 496, 496);
     }
     @Override
     public void init(double[] w) {
         {
             Random random = new Random();
-            for (int i = 816; i < 1072; i++)
-                w[i] = 0.25 * random.nextGaussian();
+            for (int i = 1008; i < 1328; i++)
+                w[i] = 0.22360679774997896 * random.nextGaussian();
         }
         {
             Random random = new Random();
-            for (int i = 272; i < 528; i++)
-                w[i] = 0.25 * random.nextGaussian();
+            for (int i = 336; i < 656; i++)
+                w[i] = 0.22360679774997896 * random.nextGaussian();
         }
         {
             Random random = new Random();
-            for (int i = 544; i < 800; i++)
-                w[i] = 0.25 * random.nextGaussian();
+            for (int i = 672; i < 992; i++)
+                w[i] = 0.22360679774997896 * random.nextGaussian();
         }
         {
             Random random = new Random();
-            for (int i = 0; i < 256; i++)
-                w[i] = 0.25 * random.nextGaussian();
+            for (int i = 0; i < 320; i++)
+                w[i] = 0.22360679774997896 * random.nextGaussian();
         }
         {
             Random random = new Random();
-            for (int i = 1632; i < 1888; i++)
-                w[i] = 0.25 * random.nextGaussian();
+            for (int i = 2016; i < 2336; i++)
+                w[i] = 0.22360679774997896 * random.nextGaussian();
         }
         {
             Random random = new Random();
-            for (int i = 1088; i < 1344; i++)
-                w[i] = 0.25 * random.nextGaussian();
+            for (int i = 1344; i < 1664; i++)
+                w[i] = 0.22360679774997896 * random.nextGaussian();
         }
         {
             Random random = new Random();
-            for (int i = 1360; i < 1616; i++)
-                w[i] = 0.25 * random.nextGaussian();
+            for (int i = 1680; i < 2000; i++)
+                w[i] = 0.22360679774997896 * random.nextGaussian();
         }
     }
     @Override
     public void forward(double[] x, double[] w, double[] y, double[] f) {
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++)
-                f[i * 16 + k + 0] += x[i * 16 + j + 0] * w[j * 16 + k + 816];
+                f[i * 16 + k + 0] += x[i * 20 + j + 0] * w[j * 16 + k + 1008];
         }
         {
-            int ap = 0, bp = 1072;
+            int ap = 0, bp = 1328;
             for (int cp = 16; cp < 32; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
@@ -65,12 +65,12 @@ public class GenDeconv extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++)
-                f[i * 16 + k + 48] += x[i * 16 + j + 0] * w[j * 16 + k + 272];
+                f[i * 16 + k + 48] += x[i * 20 + j + 0] * w[j * 16 + k + 336];
         }
         {
-            int ap = 48, bp = 528;
+            int ap = 48, bp = 656;
             for (int cp = 64; cp < 80; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
@@ -81,18 +81,18 @@ public class GenDeconv extends VectorDiffStruct {
             }
         }
         {
-            int ap = 80, bp = 16;
+            int ap = 80, bp = 20;
             for (int cp = 96; cp < 112; cp++)
                 f[cp] += f[ap++] * x[bp++];
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++)
-                f[i * 16 + k + 112] += x[i * 16 + j + 0] * w[j * 16 + k + 544];
+                f[i * 16 + k + 112] += x[i * 20 + j + 0] * w[j * 16 + k + 672];
         }
         {
-            int ap = 112, bp = 800;
+            int ap = 112, bp = 992;
             for (int cp = 128; cp < 144; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
@@ -104,12 +104,12 @@ public class GenDeconv extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++)
-                f[i * 16 + k + 160] += x[i * 16 + j + 0] * w[j * 16 + k + 0];
+                f[i * 16 + k + 160] += x[i * 20 + j + 0] * w[j * 16 + k + 0];
         }
         {
-            int ap = 160, bp = 256;
+            int ap = 160, bp = 320;
             for (int cp = 176; cp < 192; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
@@ -142,12 +142,12 @@ public class GenDeconv extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++)
-                f[i * 16 + k + 272] += x[i * 16 + j + 0] * w[j * 16 + k + 1632];
+                f[i * 16 + k + 272] += x[i * 20 + j + 0] * w[j * 16 + k + 2016];
         }
         {
-            int ap = 272, bp = 1888;
+            int ap = 272, bp = 2336;
             for (int cp = 288; cp < 304; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
@@ -159,12 +159,12 @@ public class GenDeconv extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++)
-                f[i * 16 + k + 320] += x[i * 16 + j + 0] * w[j * 16 + k + 1088];
+                f[i * 16 + k + 320] += x[i * 20 + j + 0] * w[j * 16 + k + 1344];
         }
         {
-            int ap = 320, bp = 1344;
+            int ap = 320, bp = 1664;
             for (int cp = 336; cp < 352; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
@@ -175,18 +175,18 @@ public class GenDeconv extends VectorDiffStruct {
             }
         }
         {
-            int ap = 352, bp = 16;
+            int ap = 352, bp = 20;
             for (int cp = 368; cp < 384; cp++)
                 f[cp] += f[ap++] * x[bp++];
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++)
-                f[i * 16 + k + 384] += x[i * 16 + j + 0] * w[j * 16 + k + 1360];
+                f[i * 16 + k + 384] += x[i * 20 + j + 0] * w[j * 16 + k + 1680];
         }
         {
-            int ap = 384, bp = 1616;
+            int ap = 384, bp = 2000;
             for (int cp = 400; cp < 416; cp++)
                 f[cp] += f[ap++] + w[bp++];
         }
@@ -278,7 +278,7 @@ public class GenDeconv extends VectorDiffStruct {
             }
         }
         {
-            int dap = 96, dbp = 1616;
+            int dap = 96, dbp = 2000;
             for (int dcp = 80; dcp < 96; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
@@ -286,15 +286,15 @@ public class GenDeconv extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++) {
-                dx[i * 16 + j + 0] += b[i * 16 + k + 96] * w[j * 16 + k + 1360];
-                dw[j * 16 + k + 1360] += x[i * 16 + j + 0] * b[i * 16 + k + 96];
+                dx[i * 20 + j + 0] += b[i * 16 + k + 96] * w[j * 16 + k + 1680];
+                dw[j * 16 + k + 1680] += x[i * 20 + j + 0] * b[i * 16 + k + 96];
             }
         }
         {
-            int ap = 352, bp = 16;
-            int dap = 128, dbp = 16;
+            int ap = 352, bp = 20;
+            int dap = 128, dbp = 20;
             for (int dcp = 112; dcp < 128; dcp++) {
                 b[dap++] += b[dcp] * x[bp++];
                 dx[dbp++] += b[dcp] * f[ap++];
@@ -307,7 +307,7 @@ public class GenDeconv extends VectorDiffStruct {
             }
         }
         {
-            int dap = 160, dbp = 1344;
+            int dap = 160, dbp = 1664;
             for (int dcp = 144; dcp < 160; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
@@ -315,10 +315,10 @@ public class GenDeconv extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++) {
-                dx[i * 16 + j + 0] += b[i * 16 + k + 160] * w[j * 16 + k + 1088];
-                dw[j * 16 + k + 1088] += x[i * 16 + j + 0] * b[i * 16 + k + 160];
+                dx[i * 20 + j + 0] += b[i * 16 + k + 160] * w[j * 16 + k + 1344];
+                dw[j * 16 + k + 1344] += x[i * 20 + j + 0] * b[i * 16 + k + 160];
             }
         }
         {
@@ -328,7 +328,7 @@ public class GenDeconv extends VectorDiffStruct {
             }
         }
         {
-            int dap = 208, dbp = 1888;
+            int dap = 208, dbp = 2336;
             for (int dcp = 192; dcp < 208; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
@@ -336,10 +336,10 @@ public class GenDeconv extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++) {
-                dx[i * 16 + j + 0] += b[i * 16 + k + 208] * w[j * 16 + k + 1632];
-                dw[j * 16 + k + 1632] += x[i * 16 + j + 0] * b[i * 16 + k + 208];
+                dx[i * 20 + j + 0] += b[i * 16 + k + 208] * w[j * 16 + k + 2016];
+                dw[j * 16 + k + 2016] += x[i * 20 + j + 0] * b[i * 16 + k + 208];
             }
         }
         {
@@ -378,7 +378,7 @@ public class GenDeconv extends VectorDiffStruct {
             }
         }
         {
-            int dap = 320, dbp = 256;
+            int dap = 320, dbp = 320;
             for (int dcp = 304; dcp < 320; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
@@ -386,10 +386,10 @@ public class GenDeconv extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++) {
-                dx[i * 16 + j + 0] += b[i * 16 + k + 320] * w[j * 16 + k + 0];
-                dw[j * 16 + k + 0] += x[i * 16 + j + 0] * b[i * 16 + k + 320];
+                dx[i * 20 + j + 0] += b[i * 16 + k + 320] * w[j * 16 + k + 0];
+                dw[j * 16 + k + 0] += x[i * 20 + j + 0] * b[i * 16 + k + 320];
             }
         }
         {
@@ -399,7 +399,7 @@ public class GenDeconv extends VectorDiffStruct {
             }
         }
         {
-            int dap = 368, dbp = 800;
+            int dap = 368, dbp = 992;
             for (int dcp = 352; dcp < 368; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
@@ -407,15 +407,15 @@ public class GenDeconv extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++) {
-                dx[i * 16 + j + 0] += b[i * 16 + k + 368] * w[j * 16 + k + 544];
-                dw[j * 16 + k + 544] += x[i * 16 + j + 0] * b[i * 16 + k + 368];
+                dx[i * 20 + j + 0] += b[i * 16 + k + 368] * w[j * 16 + k + 672];
+                dw[j * 16 + k + 672] += x[i * 20 + j + 0] * b[i * 16 + k + 368];
             }
         }
         {
-            int ap = 80, bp = 16;
-            int dap = 400, dbp = 16;
+            int ap = 80, bp = 20;
+            int dap = 400, dbp = 20;
             for (int dcp = 384; dcp < 400; dcp++) {
                 b[dap++] += b[dcp] * x[bp++];
                 dx[dbp++] += b[dcp] * f[ap++];
@@ -428,7 +428,7 @@ public class GenDeconv extends VectorDiffStruct {
             }
         }
         {
-            int dap = 432, dbp = 528;
+            int dap = 432, dbp = 656;
             for (int dcp = 416; dcp < 432; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
@@ -436,10 +436,10 @@ public class GenDeconv extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++) {
-                dx[i * 16 + j + 0] += b[i * 16 + k + 432] * w[j * 16 + k + 272];
-                dw[j * 16 + k + 272] += x[i * 16 + j + 0] * b[i * 16 + k + 432];
+                dx[i * 20 + j + 0] += b[i * 16 + k + 432] * w[j * 16 + k + 336];
+                dw[j * 16 + k + 336] += x[i * 20 + j + 0] * b[i * 16 + k + 432];
             }
         }
         {
@@ -449,7 +449,7 @@ public class GenDeconv extends VectorDiffStruct {
             }
         }
         {
-            int dap = 480, dbp = 1072;
+            int dap = 480, dbp = 1328;
             for (int dcp = 464; dcp < 480; dcp++) {
                 b[dap++] += b[dcp];
                 dw[dbp++] += b[dcp];
@@ -457,10 +457,10 @@ public class GenDeconv extends VectorDiffStruct {
         }
         {
             for (int i = 0; i < 1; i++)
-            for (int j = 0; j < 16; j++)
+            for (int j = 0; j < 20; j++)
             for (int k = 0; k < 16; k++) {
-                dx[i * 16 + j + 0] += b[i * 16 + k + 480] * w[j * 16 + k + 816];
-                dw[j * 16 + k + 816] += x[i * 16 + j + 0] * b[i * 16 + k + 480];
+                dx[i * 20 + j + 0] += b[i * 16 + k + 480] * w[j * 16 + k + 1008];
+                dw[j * 16 + k + 1008] += x[i * 20 + j + 0] * b[i * 16 + k + 480];
             }
         }
     }

@@ -7,12 +7,12 @@ import core.VarDiffStruct;
 
 public class ImgConvolution extends Convolution {
 
-    public ImgConvolution(int depth, VarDiffStruct<double[], double[]> horzFold, VarDiffStruct<double[], double[]> vertFold) {
-        super(depth, horzFold, vertFold);
+    public ImgConvolution(int rows, int cols, VarDiffStruct<double[], double[]> horzFold, VarDiffStruct<double[], double[]> vertFold) {
+        super(rows, cols, horzFold, vertFold);
     }
 
     @Override
-    Result<Pair<double[][][], double[][]>, double[]> result(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
+    Result<Pair<double[][][], double[][]>, double[]> result(Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
         int curRows = rows, curCols = cols;
 
         while (curRows > 1 || curCols > 1) {
@@ -90,7 +90,7 @@ public class ImgConvolution extends Convolution {
         Node root = nodes[0][0];
         // System.out.println(root.level);
 
-        return new Result<>(new Memory(root, rows, cols), root.values);
+        return new Result<>(new Memory(root), root.values);
 
     }
 

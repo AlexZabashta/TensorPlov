@@ -1,27 +1,32 @@
 package dataset;
 
+import java.util.Arrays;
+import java.util.Random;
 import java.util.function.Function;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import core.BoundVarShape;
 import core.MultiVarDiffStruct;
 import core.Result;
+import core.TensorShape;
 import core.VarDiffStruct;
+import core.VectorShape;
 
 public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]> {
 
     class Node {
-        double[] values;
+        double[] delta;
 
-        int level, size = 1;
+        Function<double[], Pair<double[], double[]>> derivative;
+        double error;
         Node first, secnd;
-        double sumHor = 0, sumVer = 0;
 
         boolean horizontal;
-        Function<double[], Pair<double[], double[]>> derivative;
+        int level, size = 1;
 
-        double[] delta;
-        double error;
+        double sumHor = 0, sumVer = 0;
+        double[] values;
 
         public Node() {
         }
@@ -63,7 +68,7 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
                     sumVer += scale;
                 }
 
-                delta = dxe.getLeft();
+                delta = Arrays.copyOfRange(dxe.getLeft(), 4, depth + 4);
                 error = (first.error + secnd.error) / 2;
 
                 double defaultExpand = (maxLevel - level) * 1.0 / maxLevel;
@@ -107,10 +112,18 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
 
             Result<Pair<double[], double[]>, double[]> result;
 
+            Random random = new Random();
+
+            double[] evalues = new double[depth + 4];
+            System.arraycopy(values, 0, evalues, 4, depth);
+            for (int i = 0; i < 4; i++) {
+                evalues[i] += random.nextGaussian();
+            }
+
             if (horizontal) {
-                result = horzExpand.result(values, horzBoundVar);
+                result = horzExpand.result(evalues, horzBoundVar);
             } else {
-                result = vertExpand.result(values, vertBoundVar);
+                result = vertExpand.result(evalues, vertBoundVar);
             }
             derivative = result.derivative();
 
@@ -135,16 +148,16 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
             error = Math.sqrt(sum);
         }
 
-        double weight() {
-            return size;
-        }
-
         public void setSize() {
             if (first != null && secnd != null) {
                 first.setSize();
                 secnd.setSize();
                 size = first.size + secnd.size;
             }
+        }
+
+        double weight() {
+            return size;
         }
 
     }
@@ -164,6 +177,31 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
         this.vertExpand = vertExpand;
         this.rows = rows;
         this.cols = cols;
+    }
+
+    @Override
+    public BoundVarShape boundVarShape() {
+        return new BoundVarShape(horzExpand.numBoundVars(), vertExpand.numBoundVars());
+    }
+
+    @Override
+    public VectorShape freeVarType() {
+        return new VectorShape(depth);
+    }
+
+    @Override
+    public double[][] genBoundVars() {
+        return new double[][] { horzExpand.genBoundVars(), vertExpand.genBoundVars() };
+    }
+
+    @Override
+    public TensorShape outputType() {
+        return new TensorShape(rows, cols, depth);
+    }
+
+    @Override
+    public Result<Pair<double[], double[][]>, double[][][]> result(double[] freeVar, double[]... bounVar) {
+        return result(freeVar, bounVar[0], bounVar[1]);
     }
 
     public Result<Pair<double[], double[][]>, double[][][]> result(double[] vector, double[] horzBoundVar, double[] vertBoundVar) {
@@ -280,21 +318,6 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
 
         }, dataset);
 
-    }
-
-    @Override
-    public int[] numBoundVars() {
-        return new int[] { horzExpand.numBoundVars(), vertExpand.numBoundVars() };
-    }
-
-    @Override
-    public double[][] genBoundVars() {
-        return new double[][] { horzExpand.genBoundVars(), vertExpand.genBoundVars() };
-    }
-
-    @Override
-    public Result<Pair<double[], double[][]>, double[][][]> result(double[] freeVar, double[]... bounVar) {
-        return result(freeVar, bounVar[0], bounVar[1]);
     }
 
 }

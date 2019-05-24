@@ -86,7 +86,7 @@ public class Builder {
         Tanh tanh = new Tanh();
         Sigmoid sigmoid = new Sigmoid();
 
-        Variable h = new Variable("x", 0, size);
+        Variable h = new Variable("x", 0, size + 4);
         Variable c = new Variable("x", h.to, h.to + size);
 
         Node s = fullConnectedLayer(mem, h, size, tanh);

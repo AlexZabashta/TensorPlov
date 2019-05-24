@@ -1,31 +1,87 @@
 package dataset;
 
-import java.util.Random;
+import java.util.Arrays;
 import java.util.function.Function;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import core.BoundVarShape;
 import core.MultiVarDiffStruct;
 import core.Result;
+import core.TensorShape;
 import core.VarDiffStruct;
+import core.VectorShape;
 
 public abstract class Convolution implements MultiVarDiffStruct<double[][][], double[]> {
+    class DatasetCell extends Node {
+        final int row, col;
 
-    public class Memory implements Function<double[], Pair<double[][][], double[][]>> {
-        final Node root;
-        final int rows, cols;
-        double normH, normV;
-
-        Memory(Node root, int rows, int cols) {
-            this.root = root;
-            this.rows = rows;
-            this.cols = cols;
+        DatasetCell(double[] values, int row, int col) {
+            super(1, values);
+            this.row = row;
+            this.col = col;
         }
 
-        void normalize(double[] array, double scale) {
-            for (int i = 0; i < array.length; i++) {
-                array[i] *= scale;
+        @Override
+        void backward(Memory memory, double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors) {
+            dx[row][col] = dy;
+        }
+
+    }
+
+    abstract class Fold extends Node {
+        final Function<double[], Pair<double[], double[]>> derivative;
+        final Node first, secnd;
+
+        Fold(Node first, Node secnd, Function<double[], Pair<double[], double[]>> derivative, double[] values) {
+            super(first.size + secnd.size, values);
+            this.first = first;
+            this.secnd = secnd;
+            this.derivative = derivative;
+        }
+
+        void addWithWeight(double[] src, double weight, double[] dst) {
+            for (int i = 0; i < src.length; i++) {
+                dst[i] += src[i] * weight;
             }
+        }
+
+        abstract double[] backward(Memory memory, double[] dy, double[] sdh, double[] sdv);
+
+        @Override
+        void backward(Memory memory, double[] dy, double[][][] dInput, double[] sdh, double[] sdv, double sumErrors, double normErrors) {
+            double[] dx = backward(memory, dy, sdh, sdv);
+
+            double[] da = Arrays.copyOfRange(dx, 0, depth);
+            double[] db = Arrays.copyOfRange(dx, depth, dx.length);
+
+            first.backward(memory, da, dInput, sdh, sdv, sumErrors, normErrors);
+            secnd.backward(memory, db, dInput, sdh, sdv, sumErrors, normErrors);
+        }
+
+    }
+
+    class HorzFold extends Fold {
+        HorzFold(Node first, Node secnd, Function<double[], Pair<double[], double[]>> derivative, double[] values) {
+            super(first, secnd, derivative, values);
+        }
+
+        @Override
+        double[] backward(Memory memory, double[] dy, double[] sdh, double[] sdv) {
+            Pair<double[], double[]> dxh = derivative.apply(dy);
+            addWithWeight(dxh.getRight(), weight(), sdh);
+            memory.normH += weight();
+            return dxh.getLeft();
+        }
+    }
+
+    public class Memory implements Function<double[], Pair<double[][][], double[][]>> {
+        double normH, normV;
+        final Node root;
+
+        Memory(Node root) {
+            this.root = root;
         }
 
         @Override
@@ -49,91 +105,29 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
             return Pair.of(dx, new double[][] { dh, dv });
         }
 
+        void normalize(double[] array, double scale) {
+            for (int i = 0; i < array.length; i++) {
+                array[i] *= scale;
+            }
+        }
+
     }
 
     abstract class Node {
-        final double[] values;
         final int size;
+        final double[] values;
 
         Node(int size, double[] values) {
             this.size = size;
             this.values = values;
         }
 
-        void backward(Memory memory, double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors) {
-            // double sum = 0;
-            // for (int i = 0; i < dy.length; i++) {
-            // sum += dy[i] * dy[i];
-            // }
-            //
-            // double error = Math.sqrt(sum);
-            //
-            // sumErrors += error * weight();
-            // normErrors += weight();
-            //
-            // double norm = 1 / (error + 1e-7);
-            // for (int i = 0; i < dy.length; i++) {
-            // dy[i] *= norm;
-            // }
-
-            backwardE(memory, dy, dx, sdh, sdv, sumErrors, normErrors);
-        }
-
-        abstract void backwardE(Memory memory, double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors);
+        abstract void backward(Memory memory, double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors);
 
         double weight() {
             return size;
         }
 
-    }
-
-    abstract class Fold extends Node {
-        final Node first, secnd;
-        final Function<double[], Pair<double[], double[]>> derivative;
-
-        Fold(Node first, Node secnd, Function<double[], Pair<double[], double[]>> derivative, double[] values) {
-            super(first.size + secnd.size, values);
-            this.first = first;
-            this.secnd = secnd;
-            this.derivative = derivative;
-        }
-
-        void addWithWeight(double[] src, double weight, double[] dst) {
-            for (int i = 0; i < src.length; i++) {
-                dst[i] += src[i] * weight;
-            }
-        }
-
-        abstract double[] backward(Memory memory, double[] dy, double[] sdh, double[] sdv);
-
-        @Override
-        void backwardE(Memory memory, double[] dy, double[][][] dInput, double[] sdh, double[] sdv, double sumErrors, double normErrors) {
-            double[] dx = backward(memory, dy, sdh, sdv);
-
-            double[] da = new double[depth];
-            double[] db = new double[depth];
-
-            System.arraycopy(dx, 0, da, 0, depth);
-            System.arraycopy(dx, depth, db, 0, depth);
-
-            first.backward(memory, da, dInput, sdh, sdv, sumErrors, normErrors);
-            secnd.backward(memory, db, dInput, sdh, sdv, sumErrors, normErrors);
-        }
-
-    }
-
-    class HorzFold extends Fold {
-        HorzFold(Node first, Node secnd, Function<double[], Pair<double[], double[]>> derivative, double[] values) {
-            super(first, secnd, derivative, values);
-        }
-
-        @Override
-        double[] backward(Memory memory, double[] dy, double[] sdh, double[] sdv) {
-            Pair<double[], double[]> dxh = derivative.apply(dy);
-            addWithWeight(dxh.getRight(), weight(), sdh);
-            memory.normH += weight();
-            return dxh.getLeft();
-        }
     }
 
     class VertFold extends Fold {
@@ -150,41 +144,39 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
         }
     }
 
-    class DatasetCell extends Node {
-        final int row, col;
-
-        DatasetCell(double[] values, int row, int col) {
-            super(1, values);
-            this.row = row;
-            this.col = col;
-        }
-
-        @Override
-        void backwardE(Memory memory, double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors) {
-            // double avgError = sumErrors / normErrors;
-            // for (int i = 0; i < dy.length; i++) {
-            // dy[i] *= avgError;
-            // }
-            dx[row][col] = dy;
-        }
-
-    }
-
     public final int depth;
+
     public final VarDiffStruct<double[], double[]> horzFold;
+    final int rows, cols;
     public final VarDiffStruct<double[], double[]> vertFold;
 
-    public Convolution(int depth, VarDiffStruct<double[], double[]> horzFold, VarDiffStruct<double[], double[]> vertFold) {
-        this.depth = depth;
+    public Convolution(int rows, int cols, VarDiffStruct<double[], double[]> horzFold, VarDiffStruct<double[], double[]> vertFold) {
+        this.rows = rows;
+        this.cols = cols;
         this.horzFold = horzFold;
         this.vertFold = vertFold;
+
+        this.depth = ((VectorShape) horzFold.outputType()).length;
+        if (depth != ((VectorShape) vertFold.outputType()).length) {
+            throw new IllegalArgumentException("horzFold.outputType().length != vertFold.outputType().length");
+        }
+
+        if (2 * depth != ((VectorShape) horzFold.freeVarType()).length) {
+            throw new IllegalArgumentException("horzFold.freeVarType().length != 2 * depth");
+        }
+
+        if (2 * depth != ((VectorShape) vertFold.freeVarType()).length) {
+            throw new IllegalArgumentException("vertFold.freeVarType().length != 2 * depth");
+        }
+    }
+
+    @Override
+    public BoundVarShape boundVarShape() {
+        return new BoundVarShape(horzFold.numBoundVars(), vertFold.numBoundVars());
     }
 
     Fold buildNode(boolean horizontal, double[] foldBoundVar, Node first, Node secnd) {
-        double[] x = new double[depth * 2];
-        System.arraycopy(first.values, 0, x, 0, depth);
-        System.arraycopy(secnd.values, 0, x, depth, depth);
-
+        double[] x = ArrayUtils.addAll(first.values, secnd.values);
         if (horizontal) {
             Result<Pair<double[], double[]>, double[]> result = horzFold.result(x, foldBoundVar);
             return new HorzFold(first, secnd, result.derivative(), result.value());
@@ -195,12 +187,26 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
     }
 
     @Override
+    public TensorShape freeVarType() {
+        return new TensorShape(rows, cols, depth);
+    }
+
+    @Override
+    public double[][] genBoundVars() {
+        return new double[][] { horzFold.genBoundVars(), vertFold.genBoundVars() };
+    }
+
+    @Override
+    public VectorShape outputType() {
+        return new VectorShape(depth);
+    }
+
+    @Override
     public Result<Pair<double[][][], double[][]>, double[]> result(double[][][] freeVar, double[]... bounVar) {
         return result(freeVar, bounVar[0], bounVar[1]);
     }
 
     public Result<Pair<double[][][], double[][]>, double[]> result(double[][][] dataset, double[] horzBoundVar, double[] vertBoundVar) {
-        final int rows = dataset.length, cols = dataset[0].length;
 
         Node[][] nodes = new Node[rows][cols];
 
@@ -209,19 +215,9 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
                 nodes[row][col] = new DatasetCell(dataset[row][col], row, col);
             }
         }
-        return result(rows, cols, nodes, horzBoundVar, vertBoundVar);
+        return result(nodes, horzBoundVar, vertBoundVar);
     }
 
-    abstract Result<Pair<double[][][], double[][]>, double[]> result(int rows, int cols, Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar);
-
-    @Override
-    public int[] numBoundVars() {
-        return new int[] { horzFold.numBoundVars(), vertFold.numBoundVars() };
-    }
-
-    @Override
-    public double[][] genBoundVars() {
-        return new double[][] { horzFold.genBoundVars(), vertFold.genBoundVars() };
-    }
+    abstract Result<Pair<double[][][], double[][]>, double[]> result(Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar);
 
 }

@@ -65,6 +65,16 @@ public abstract class VectorDiffStruct implements VarDiffStruct<double[], double
     }
 
     @Override
+    public Object freeVarType() {
+        return new VectorShape(xSize);
+    }
+
+    @Override
+    public Object outputType() {
+        return new VectorShape(ySize);
+    }
+
+    @Override
     public int numBoundVars() {
         return wSize;
     }

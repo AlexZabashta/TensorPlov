@@ -11,4 +11,8 @@ public interface DiffFunct<Domain, Codomain> extends Function<Domain, Codomain> 
         return result(input).value();
     }
 
+    public Object inputType();
+
+    public Object outputType();
+
 }
