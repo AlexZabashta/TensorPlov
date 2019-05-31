@@ -24,8 +24,8 @@ public class BuildEHVD {
 
     public static void main(String[] args) throws FileNotFoundException {
         buildAndSave("Encoder", false, 2, 16, 32, 40);
-        buildAndSave("HVFold", false, 80, 60, 40);
-        buildAndSave("Decoder", true, 40, 29, 20, 15, 3);
-        buildAndSave("Simple", true, 29, 20, 15, 3);
+        // buildAndSave("HVFold", false, 80, 60, 40);
+        buildAndSave("Decoder", true, 40, 23, 20, 15, 3);
+        buildAndSave("Simple", true, 23, 20, 15, 3);
     }
 }

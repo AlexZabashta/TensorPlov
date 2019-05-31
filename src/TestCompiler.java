@@ -22,7 +22,7 @@ public class TestCompiler {
 
         MemoryManager manager = new MemoryManager("w");
 
-        Node node = Builder.conLstmLayer(manager, 14);
+        Node node = Builder.conLstmLayer(manager, 20);
 
         String name = "LSTM";
 

@@ -54,14 +54,15 @@ public class TestNN {
         }
     }
 
-    void run() throws InterruptedException, FileNotFoundException, ExecutionException {
+    void run() throws InterruptedException, ExecutionException, IOException {
 
         ExecutorService executor = Executors.newFixedThreadPool(6);
+        List<Dataset> datasets = DataReader.readZipData("csv.zip", executor);
 
-        Pair<List<Dataset>, List<Dataset>> datasets = DataReader.readData("csv", executor);
+        Pair<List<Dataset>, List<Dataset>> tt = DataReader.splitData("test.txt", datasets);
 
-        List<Dataset> train = datasets.getLeft();
-        List<Dataset> test = datasets.getRight();
+        List<Dataset> train = tt.getLeft();
+        List<Dataset> test = tt.getRight();
 
         double baseMF = 0;
 
@@ -158,7 +159,7 @@ public class TestNN {
                                 disfd[0] = disfv[0] - joint[23];
                                 disfd[1] = disfv[1] - joint[24];
                                 disfd[2] = disfv[2] - joint[25];
-                                disfd[3] = disfv[3] - 1;
+                                disfd[3] = -2;// disfv[3] - 1;
 
                                 start = System.currentTimeMillis();
                                 double[][][] deltaObj = disf.apply(disfd).getLeft().getLeft();

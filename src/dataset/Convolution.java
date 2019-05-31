@@ -127,7 +127,8 @@ public abstract class Convolution implements MultiVarDiffStruct<double[][][], do
         abstract void backward(Memory memory, double[] dy, double[][][] dx, double[] sdh, double[] sdv, double sumErrors, double normErrors);
 
         double weight() {
-            return size;
+            // return size;
+            return 1;
         }
 
     }

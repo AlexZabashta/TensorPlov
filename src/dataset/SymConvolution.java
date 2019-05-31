@@ -14,6 +14,104 @@ public class SymConvolution extends Convolution {
     Result<Pair<double[][][], double[][]>, double[]> result(Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
         int curRows = rows, curCols = cols;
 
+        while (curCols > 1) {
+            double colCos = -1;
+            int colA = 0, colB = 1;
+
+            for (int colR = 1; colR < curCols; colR++) {
+                for (int colL = 0; colL < colR; colL++) {
+                    double cos = 0;
+                    double sumL = 0, sumR = 0;
+                    for (int row = 0; row < curRows; row++) {
+                        for (int i = 0; i < depth / 2; i++) {
+                            double valL = (nodes[row][colL]).values[i];
+                            double valR = (nodes[row][colR]).values[i];
+
+                            sumL += valL;
+                            sumR += valR;
+                            cos += valL * valR;
+
+                        }
+                    }
+
+                    cos = Math.abs(cos);
+
+                    if (cos > colCos) {
+                        colCos = cos;
+                        colA = colL;
+                        colB = colR;
+
+                        if (sumL > sumR) {
+                            colA ^= colB;
+                            colB ^= colA;
+                            colA ^= colB;
+                        }
+                    }
+                }
+            }
+
+            --curCols;
+            for (int row = 0; row < curRows; row++) {
+                Node node = buildNode(true, horzBoundVar, nodes[row][colA], nodes[row][colB]);
+                nodes[row][colA] = node;
+                nodes[row][colB] = nodes[row][curCols];
+            }
+        }
+
+        while (curRows > 1) {
+            double rowCos = -1;
+            int rowA = 0, rowB = 1;
+
+            for (int rowU = 1; rowU < curRows; rowU++) {
+                for (int rowD = 0; rowD < rowU; rowD++) {
+                    double cos = 0;
+                    double sumD = 0, sumU = 0;
+                    for (int col = 0; col < curCols; col++) {
+                        for (int i = 0; i < depth / 2; i++) {
+                            double valD = (nodes[rowD][col]).values[i];
+                            double valU = (nodes[rowU][col]).values[i];
+
+                            sumD += valD;
+                            sumU += valU;
+                            cos += valD * valU;
+                        }
+                    }
+
+                    cos = Math.abs(cos);
+
+                    if (cos > rowCos) {
+                        rowCos = cos;
+                        rowA = rowD;
+                        rowB = rowU;
+
+                        if (sumD > sumU) {
+                            rowA ^= rowB;
+                            rowB ^= rowA;
+                            rowA ^= rowB;
+                        }
+                    }
+                }
+            }
+
+            --curRows;
+
+            for (int col = 0; col < curCols; col++) {
+                Node node = buildNode(false, vertBoundVar, nodes[rowA][col], nodes[rowB][col]);
+                nodes[rowA][col] = node;
+                nodes[rowB][col] = nodes[curRows][col];
+            }
+        }
+
+        Node root = nodes[0][0];
+        // System.err.println(rows + " " + cols + " " + searchTime + " " + convTime); // + " " + Arrays.toString(root.values)
+
+        return new Result<>(new Memory(root), root.values);
+
+    }
+
+    Result<Pair<double[][][], double[][]>, double[]> resultMixed(Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
+        int curRows = rows, curCols = cols;
+
         // long searchTime = 0;
         // long convTime = 0;
         // long time1, time2, time3;

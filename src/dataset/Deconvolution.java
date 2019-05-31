@@ -153,7 +153,8 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
         }
 
         double weight() {
-            return size;
+            // return size;
+            return 1;
         }
 
     }

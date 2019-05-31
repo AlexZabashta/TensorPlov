@@ -1,6 +1,5 @@
 package test.best;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -87,12 +86,15 @@ public class TestNN {
         }
     }
 
-    void run() throws InterruptedException, FileNotFoundException, ExecutionException {
-        ExecutorService executor = Executors.newFixedThreadPool(6);
+    void run() throws InterruptedException, ExecutionException, IOException {
 
-        Pair<List<Dataset>, List<Dataset>> datasets = DataReader.readData("csv", executor);
-        List<Dataset> train = datasets.getLeft();
-        List<Dataset> test = datasets.getRight();
+        ExecutorService executor = Executors.newFixedThreadPool(6);
+        List<Dataset> datasets = DataReader.readZipData("csv.zip", executor);
+
+        Pair<List<Dataset>, List<Dataset>> tt = DataReader.splitData("test.txt", datasets);
+
+        List<Dataset> train = tt.getLeft();
+        List<Dataset> test = tt.getRight();
 
         Consumer<double[][]> grad = new MAdaGrad(new double[][] { enc, hor, ver, dec, sim }, 0.0001, 0.9, 0.999);
         // Consumer<double[][]> grad = new MSGD(new double[][] { enc, hor, ver, dec, sim }, 0.001);

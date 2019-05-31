@@ -72,7 +72,7 @@ public class ReconstructDataset implements DiffFunct<double[][][], double[][][]>
             }
 
             for (int row = 0; row < rows; row++) {
-                // dataset[row][col][1] = (2 * row < rows) ? -1.0 : +1.0;
+                dataset[row][col][1] = (2 * row < rows) ? -1.0 : +1.0;
             }
         }
 
@@ -85,8 +85,8 @@ public class ReconstructDataset implements DiffFunct<double[][][], double[][][]>
                 for (int col = 0; col < cols; col++) {
                     for (int row = 0; row < rows; row++) {
                         ordDelta[row][col][0] = delta[order[row]][col][0] * sigma[col];
-                        // ordDelta[row][col][1] = 2 * (input[row][col][1] - dataset[row][col][1]) + delta[order[row]][col][1];
-                        ordDelta[row][col][1] = delta[order[row]][col][1];
+                        ordDelta[row][col][1] = 2 * (input[row][col][1] - dataset[row][col][1]) + delta[order[row]][col][1];
+                        // ordDelta[row][col][1] = delta[order[row]][col][1];
                     }
                 }
 

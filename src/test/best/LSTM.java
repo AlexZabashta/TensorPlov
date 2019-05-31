@@ -176,10 +176,10 @@ public class LSTM extends VectorDiffStruct {
     public void backward(double[] x, double[] w, double[] y, double[] dx, double[] dw, double[] dy, double[] f, double[] b) {
         {
             int dtp = 0;
-            for (int dfp = 460; dfp < 480; dfp++)
-                f[dfp] += y[dtp++];
-            for (int dfp = 420; dfp < 440; dfp++)
-                f[dfp] += y[dtp++];
+            for (int dfp = 0; dfp < 20; dfp++)
+                b[dfp] += dy[dtp++];
+            for (int dfp = 40; dfp < 60; dfp++)
+                b[dfp] += dy[dtp++];
         }
         {
             int ap = 80, bp = 440;
@@ -339,11 +339,11 @@ public class LSTM extends VectorDiffStruct {
             }
         }
         {
-            int dtp = 0;
+            int dtp = 440;
             for (int dfp = 0; dfp < 20; dfp++)
-                x[dfp] += f[dtp++];
+                dx[dfp] += b[dtp++];
             for (int dfp = 40; dfp < 60; dfp++)
-                x[dfp] += f[dtp++];
+                dx[dfp] += b[dtp++];
         }
     }
 }
