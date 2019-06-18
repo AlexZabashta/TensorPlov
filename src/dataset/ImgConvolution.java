@@ -7,19 +7,19 @@ import core.VarDiffStruct;
 
 public class ImgConvolution extends Convolution {
 
-    public ImgConvolution(int rows, int cols, VarDiffStruct<double[], double[]> horzFold, VarDiffStruct<double[], double[]> vertFold) {
-        super(rows, cols, horzFold, vertFold);
+    public ImgConvolution(int rowsInp, int colsInp, int rowsOut, int colsOut, VarDiffStruct<double[], double[]> horzFold, VarDiffStruct<double[], double[]> vertFold) {
+        super(rowsInp, colsInp, rowsOut, colsOut, horzFold, vertFold);
     }
 
     @Override
-    Result<Pair<double[][][], double[][]>, double[]> result(Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
-        int curRows = rows, curCols = cols;
+    Result<Pair<double[][][], double[][]>, double[][][]> result(Node[][] nodes, double[] horzBoundVar, double[] vertBoundVar) {
+        int curRows = rowsInp, curCols = colsInp;
 
-        while (curRows > 1 || curCols > 1) {
+        while (curRows > rowsOut || curCols > colsOut) {
             double rowCos = -1, colCos = -1;
             int rowF = 0, colF = 0;
 
-            for (int rowU = 1; rowU < curRows; rowU++) {
+            for (int rowU = 1; curRows > rowsOut && rowU < curRows; rowU++) {
                 int rowD = rowU - 1;
                 double cos = 0;
                 for (int col = 0; col < curCols; col++) {
@@ -38,7 +38,7 @@ public class ImgConvolution extends Convolution {
                 }
             }
 
-            for (int colR = 1; colR < curCols; colR++) {
+            for (int colR = 1; curCols > colsOut && colR < curCols; colR++) {
 
                 int colL = colR - 1;
                 double cos = 0;
@@ -87,16 +87,16 @@ public class ImgConvolution extends Convolution {
             }
         }
 
-        Node root = nodes[0][0];
-        // System.out.println(root.level);
+        double[][][] output = new double[rowsOut][colsOut][];
 
-        return new Result<>(new Memory(root), root.values);
+        for (int row = 0; row < rowsOut; row++) {
+            for (int col = 0; col < colsOut; col++) {
+                output[row][col] = nodes[row][col].values;
+            }
+        }
 
-    }
+        return new Result<>(new Memory(nodes), output);
 
-    @Override
-    public String toString() {
-        return "ImgConvolution [rows=" + rows + ", cols=" + cols + ", depth=" + depth + ", horzFold=" + horzFold + ", vertFold=" + vertFold + "]";
     }
 
 }

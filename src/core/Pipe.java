@@ -17,7 +17,15 @@ public class Pipe<L, M, R> implements MultiVarDiffStruct<L, R> {
     }
 
     public static <A, B, C, D, E> Pipe<A, C, E> of(MultiVarDiffStruct<A, B> ab, MultiVarDiffStruct<B, C> bc, MultiVarDiffStruct<C, D> cd, MultiVarDiffStruct<D, E> de) {
-        return new Pipe<>(new Pipe<>(ab, bc), new Pipe<>(cd, de));
+        return new Pipe<>(Pipe.of(ab, bc), Pipe.of(cd, de));
+    }
+
+    public static <A, B, C, D, E, F> Pipe<A, C, F> of(MultiVarDiffStruct<A, B> ab, MultiVarDiffStruct<B, C> bc, MultiVarDiffStruct<C, D> cd, MultiVarDiffStruct<D, E> de, MultiVarDiffStruct<E, F> ef) {
+        return new Pipe<>(Pipe.of(ab, bc), Pipe.of(cd, de, ef));
+    }
+
+    public static <A, B, C, D, E, F, G> Pipe<A, D, G> of(MultiVarDiffStruct<A, B> ab, MultiVarDiffStruct<B, C> bc, MultiVarDiffStruct<C, D> cd, MultiVarDiffStruct<D, E> de, MultiVarDiffStruct<E, F> ef, MultiVarDiffStruct<F, G> fg) {
+        return new Pipe<>(Pipe.of(ab, bc, cd), Pipe.of(de, ef, fg));
     }
 
     public final MultiVarDiffStruct<L, M> first;
@@ -30,7 +38,7 @@ public class Pipe<L, M, R> implements MultiVarDiffStruct<L, R> {
         this.secnd = secnd;
 
         if (!first.outputType().equals(secnd.freeVarType())) {
-            throw new IllegalArgumentException("first.outputType() != secnd.freeVarType()");
+            throw new IllegalArgumentException(first.outputType() + " != " + secnd.freeVarType());
         }
 
         this.firstBvLen = first.boundVarShape().length();

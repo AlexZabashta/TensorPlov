@@ -14,7 +14,7 @@ import core.TensorShape;
 import core.VarDiffStruct;
 import core.VectorShape;
 
-public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]> {
+public class Deconvolution implements MultiVarDiffStruct<double[][][], double[][][]> {
 
     class Node {
         double[] delta;
@@ -24,9 +24,8 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
         Node first, secnd;
 
         boolean horizontal;
-        int level, size = 1;
+        int level;
 
-        double sumHor = 0, sumVer = 0;
         double[] values;
 
         public Node() {
@@ -42,12 +41,6 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
                 double[] firstDelta = first.delta(maxLevel, minError, maxError, avgError, sdh, sdv);
                 double[] secndDelta = secnd.delta(maxLevel, minError, maxError, avgError, sdh, sdv);
 
-                sumHor += first.sumHor;
-                sumHor += secnd.sumHor;
-
-                sumHor += first.sumVer;
-                sumVer += secnd.sumVer;
-
                 double[] commonDelta = ArrayUtils.addAll(firstDelta, secndDelta);
 
                 Pair<double[], double[]> dxe = derivative.apply(commonDelta);
@@ -58,12 +51,6 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
                 double scale = weight();
                 for (int i = 0; i < src.length; i++) {
                     dst[i] += src[i] * scale;
-                }
-
-                if (horizontal) {
-                    sumHor += scale;
-                } else {
-                    sumVer += scale;
                 }
 
                 delta = Arrays.copyOfRange(dxe.getLeft(), 4, depth + 4);
@@ -133,7 +120,6 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
 
         void setDelta(double[] delta) {
             this.delta = delta;
-            this.size = 1;
             double sum = 0;
             for (int i = 0; i < depth; i++) {
                 if (i == ROW_EXP_ID || i == COL_EXP_ID) {
@@ -144,16 +130,7 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
             error = Math.sqrt(sum);
         }
 
-        public void setSize() {
-            if (first != null && secnd != null) {
-                first.setSize();
-                secnd.setSize();
-                size = first.size + secnd.size;
-            }
-        }
-
         double weight() {
-            // return size;
             return 1;
         }
 
@@ -167,15 +144,25 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
     public final int depth;
     public final VarDiffStruct<double[], double[]> horzExpand;
 
-    public final int rows, cols;
+    final int rowsInp, colsInp;
+    final int rowsOut, colsOut;
     public final VarDiffStruct<double[], double[]> vertExpand;
 
-    public Deconvolution(int rows, int cols, VarDiffStruct<double[], double[]> horzExpand, VarDiffStruct<double[], double[]> vertExpand) {
-        this.rows = rows;
-        this.cols = cols;
-
+    public Deconvolution(int rowsInp, int colsInp, int rowsOut, int colsOut, VarDiffStruct<double[], double[]> horzExpand, VarDiffStruct<double[], double[]> vertExpand) {
+        this.rowsInp = rowsInp;
+        this.colsInp = colsInp;
+        this.rowsOut = rowsOut;
+        this.colsOut = colsOut;
         this.horzExpand = horzExpand;
         this.vertExpand = vertExpand;
+
+        if (rowsInp > rowsOut) {
+            throw new IllegalArgumentException("rowsInp > rowsOut");
+        }
+
+        if (colsInp > colsOut) {
+            throw new IllegalArgumentException("colsInp > colsOut");
+        }
 
         this.depth = ((VectorShape) horzExpand.freeVarType()).length - RAND_LEN;
         if (depth != ((VectorShape) vertExpand.freeVarType()).length - RAND_LEN) {
@@ -189,7 +176,6 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
         if (2 * depth != ((VectorShape) vertExpand.outputType()).length) {
             throw new IllegalArgumentException("vertFold.outputType().length != 2 * depth");
         }
-
     }
 
     @Override
@@ -198,8 +184,8 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
     }
 
     @Override
-    public VectorShape freeVarType() {
-        return new VectorShape(depth);
+    public TensorShape freeVarType() {
+        return new TensorShape(rowsInp, colsInp, depth);
     }
 
     @Override
@@ -209,27 +195,31 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
 
     @Override
     public TensorShape outputType() {
-        return new TensorShape(rows, cols, depth);
+        return new TensorShape(rowsOut, colsOut, depth);
     }
 
     @Override
-    public Result<Pair<double[], double[][]>, double[][][]> result(double[] freeVar, double[]... bounVar) {
+    public Result<Pair<double[][][], double[][]>, double[][][]> result(double[][][] freeVar, double[]... bounVar) {
         return result(freeVar, bounVar[0], bounVar[1]);
     }
 
-    public Result<Pair<double[], double[][]>, double[][][]> result(double[] vector, double[] horzBoundVar, double[] vertBoundVar) {
-        final Node[][] nodes = new Node[rows][cols];
+    public Result<Pair<double[][][], double[][]>, double[][][]> result(double[][][] vector, double[] horzBoundVar, double[] vertBoundVar) {
+        final Node[][] nodes = new Node[rowsOut][colsOut];
+        final Node[][] roots = new Node[rowsInp][colsInp];
 
-        int curRows = 1, curCols = 1;
+        int curRows = rowsInp, curCols = colsInp;
 
-        final Node root = new Node(vector);
-        nodes[0][0] = root;
+        for (int row = 0; row < rowsInp; row++) {
+            for (int col = 0; col < colsInp; col++) {
+                roots[row][col] = nodes[row][col] = new Node(vector[row][col]);
+            }
+        }
 
-        while (curRows < rows || curCols < cols) {
+        while (curRows < rowsOut || curCols < colsOut) {
             double expandRow = Double.NEGATIVE_INFINITY, expandCol = Double.NEGATIVE_INFINITY;
             int rowId = 0, colId = 0;
 
-            for (int row = 0; row < curRows && curRows < rows; row++) {
+            for (int row = 0; row < curRows && curRows < rowsOut; row++) {
                 double sum = 0;
                 for (int col = 0; col < curCols; col++) {
                     sum += nodes[row][col].values[ROW_EXP_ID];
@@ -241,7 +231,7 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
                 }
             }
 
-            for (int col = 0; col < curCols && curCols < cols; col++) {
+            for (int col = 0; col < curCols && curCols < colsOut; col++) {
                 double sum = 0;
                 for (int row = 0; row < curRows; row++) {
                     sum += nodes[row][col].values[COL_EXP_ID];
@@ -276,18 +266,17 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
             }
         }
 
-        double[][][] dataset = new double[rows][cols][];
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
+        double[][][] dataset = new double[rowsOut][colsOut][];
+        for (int row = 0; row < rowsOut; row++) {
+            for (int col = 0; col < colsOut; col++) {
                 dataset[row][col] = nodes[row][col].values;
             }
         }
-        root.setSize();
 
-        return new Result<Pair<double[], double[][]>, double[][][]>(new Function<double[][][], Pair<double[], double[][]>>() {
+        return new Result<Pair<double[][][], double[][]>, double[][][]>(new Function<double[][][], Pair<double[][][], double[][]>>() {
 
             @Override
-            public Pair<double[], double[][]> apply(double[][][] deltaDataset) {
+            public Pair<double[][][], double[][]> apply(double[][][] deltaDataset) {
                 double[] deltaHorzBoundVar = new double[horzExpand.numBoundVars()];
                 double[] deltaVertBoundVar = new double[vertExpand.numBoundVars()];
 
@@ -298,8 +287,8 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
                 double avgError = 0;
                 double nrmError = 0;
 
-                for (int row = 0; row < rows; row++) {
-                    for (int col = 0; col < cols; col++) {
+                for (int row = 0; row < rowsOut; row++) {
+                    for (int col = 0; col < colsOut; col++) {
                         Node node = nodes[row][col];
 
                         maxLevel = Math.max(node.level, maxLevel);
@@ -312,17 +301,12 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
                     }
                 }
 
-                double[] delta = root.delta(maxLevel, minError - 1e-3, maxError + 1e-3, avgError / nrmError, deltaHorzBoundVar, deltaVertBoundVar);
+                double[][][] delta = new double[rowsInp][colsInp][];
 
-                double normHor = 1 / root.sumHor;
-                double normVer = 1 / root.sumVer;
-
-                for (int i = 0; i < deltaHorzBoundVar.length; i++) {
-                    deltaHorzBoundVar[i] *= normHor;
-                }
-
-                for (int i = 0; i < deltaVertBoundVar.length; i++) {
-                    deltaVertBoundVar[i] *= normVer;
+                for (int row = 0; row < rowsInp; row++) {
+                    for (int col = 0; col < colsInp; col++) {
+                        delta[row][col] = roots[row][col].delta(maxLevel, minError - 1e-3, maxError + 1e-3, avgError / nrmError, deltaHorzBoundVar, deltaVertBoundVar);
+                    }
                 }
 
                 return Pair.of(delta, new double[][] { deltaHorzBoundVar, deltaVertBoundVar });
@@ -331,11 +315,6 @@ public class Deconvolution implements MultiVarDiffStruct<double[], double[][][]>
 
         }, dataset);
 
-    }
-
-    @Override
-    public String toString() {
-        return "Deconvolution [rows=" + rows + ", cols=" + cols + ", depth=" + depth + ", horzExpand=" + horzExpand + ", vertExpand=" + vertExpand + "]";
     }
 
 }

@@ -12,8 +12,10 @@ import core.Pipe;
 import core.WrapVector;
 import dataset.Convolution;
 import dataset.Deconvolution;
+import dataset.Pac;
 import dataset.ReconstructDataset;
 import dataset.SymConvolution;
+import dataset.UnPac;
 import scheme.Builder;
 import scheme.Concat;
 import scheme.MemoryManager;
@@ -32,11 +34,14 @@ public class BuildGanUnits {
         DisEncoder encoder = new DisEncoder();
         DisDecoder decoder = new DisDecoder();
 
-        Convolution convolution = new SymConvolution(DataReader.numObjects, DataReader.numFeatures, convUnit, convUnit);
+        Convolution con1 = new SymConvolution(128, 16, 16, 4, convUnit, convUnit);
+        Convolution con2 = new SymConvolution(16, 4, 1, 1, convUnit, convUnit);
+
+        MultiVarDiffStruct<double[][][], double[]> unpac = MultiVarDiffStruct.convertFun(new UnPac(convUnit.ySize));
 
         MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(encoder, DataReader.numObjects, DataReader.numFeatures));
         MultiVarDiffStruct<double[], double[]> mdecoder = MultiVarDiffStruct.convert(decoder);
-        core.Concat<double[][][], double[]> concat = new core.Concat<>(Pipe.of(pencoder, convolution), MultiVarDiffStruct.convertFun(new WrapVector(23)));
+        core.Concat<double[][][], double[]> concat = new core.Concat<>(Pipe.of(pencoder, con1, con2, unpac), MultiVarDiffStruct.convertFun(new WrapVector(23)));
 
         return Pipe.of(concat, mdecoder);
     }
@@ -49,12 +54,15 @@ public class BuildGanUnits {
 
         MultiVarDiffStruct<double[], double[]> mencoder = MultiVarDiffStruct.convert(encoder);
 
-        MultiVarDiffStruct<double[], double[][][]> deconvolution = new Deconvolution(DataReader.numObjects, DataReader.numFeatures, decUnit, decUnit);
+        MultiVarDiffStruct<double[], double[][][]> pac = MultiVarDiffStruct.convertFun(new Pac(decUnit.xSize - Deconvolution.RAND_LEN));
+
+        MultiVarDiffStruct<double[][][], double[][][]> dec1 = new Deconvolution(1, 1, 16, 4, decUnit, decUnit);
+        MultiVarDiffStruct<double[][][], double[][][]> dec2 = new Deconvolution(16, 4, 128, 16, decUnit, decUnit);
 
         MultiVarDiffStruct<double[][][], double[][][]> pdecoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(decoder, DataReader.numObjects, DataReader.numFeatures));
         MultiVarDiffStruct<double[][][], double[][][]> rec = MultiVarDiffStruct.convertFun(new ReconstructDataset(DataReader.numObjects, DataReader.numFeatures));
 
-        return Pipe.of(mencoder, deconvolution, pdecoder, rec);
+        return Pipe.of(mencoder, pac, dec1, dec2, pdecoder, rec);
     }
 
     public static void buildAndSave(String name, Node root) {
@@ -76,7 +84,7 @@ public class BuildGanUnits {
         // buildAndSave("GenDecoder", true, 40, 29, 20, 15, 3);
 
         Tanh tanh = new Tanh();
-        Relu relu = new Relu(0.001);
+        Relu relu = new Relu(0.01);
 
         int halfSize = 16;
         int fullSize = halfSize * 2;
@@ -98,7 +106,7 @@ public class BuildGanUnits {
 
         buildAndSave("GenEncoder", Builder.buildLayers(false, 2 * metaFeatures, halfSize + metaFeatures, fullSize));
         buildAndSave("GenDecoder", Builder.buildLayers(false, fullSize, halfSize, 2));
-        buildAndSave("GenDeconv", Builder.decLstmLayer(new MemoryManager("w"), halfSize));
+        buildAndSave("GenDeconv", Builder.decLstmLayer(new MemoryManager("w"), Deconvolution.RAND_LEN, halfSize));
 
     }
 }

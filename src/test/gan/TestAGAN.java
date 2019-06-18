@@ -24,7 +24,7 @@ import ru.ifmo.ctddev.ml.mfe.JointDecMF;
 import test.DataReader;
 import test.Dataset;
 
-public class TestNN {
+public class TestAGAN {
 
     MultiVarDiffStruct<Pair<double[][][], double[]>, double[]> dis = BuildGanUnits.discriminator();
     MultiVarDiffStruct<double[], double[][][]> gen = BuildGanUnits.generator();
@@ -106,16 +106,13 @@ public class TestNN {
                             @Override
                             public Outcome call() throws Exception {
                                 Random random = new Random();
+
                                 double[] vector = new double[46];
                                 for (int i = 0; i < 46; i++) {
                                     vector[i] = random.nextGaussian();
                                 }
 
-                                long start, finish;
-
-                                start = System.currentTimeMillis();
                                 Result<Pair<double[], double[][]>, double[][][]> gens = gen.result(vector, genValues);
-                                finish = System.currentTimeMillis();
                                 // System.err.println("GEN time = " + (finish - start));
 
                                 double realRate = 0, mfMSE = 0, lmMSE = 0;
@@ -132,10 +129,7 @@ public class TestNN {
                                     labels[oid] = (2 * oid < objects) ? 0 : 1;
                                 }
 
-                                start = System.currentTimeMillis();
                                 double[] joint = JointDecMF.extract(objects, features, 2, data, labels);
-                                finish = System.currentTimeMillis();
-                                // System.err.println("MFE time = " + (finish - start));
 
                                 for (int i = 0; i < 23; i++) {
                                     double diff = joint[i] - vector[i];
@@ -144,66 +138,65 @@ public class TestNN {
 
                                 double[] fmf = Arrays.copyOf(joint, 23);
 
-                                start = System.currentTimeMillis();
                                 Result<Pair<Pair<double[][][], double[]>, double[][]>, double[]> disf = dis.result(Pair.of(obj, fmf), disValues);
-                                finish = System.currentTimeMillis();
                                 // System.err.println("DIS time = " + (finish - start));
 
                                 double[] disfv = disf.value();
+
                                 if (disfv[3] > 0) {
                                     realRate += 0.5;
+
+                                    double[] disfd = new double[4];
+                                    disfd[0] = (disfv[0] - joint[23]) / Math.sqrt(2);
+                                    disfd[1] = (disfv[1] - joint[24]) / Math.sqrt(2);
+                                    disfd[2] = (disfv[2] - joint[25]) / Math.sqrt(2);
+                                    disfd[3] = disfv[3] + 1;
+
+                                    Pair<Pair<double[][][], double[]>, double[][]> disfdd = disf.apply(disfd);
+
+                                    Result<Pair<Pair<double[][][], double[]>, double[][]>, double[]> disr = dis.result(Pair.of(dataset.dataset, dataset.mf), disValues);
+                                    double[] disrv = disr.value();
+                                    double[] disrd = new double[4];
+                                    disrd[0] = disrv[0] - dataset.lm[0];
+                                    disrd[1] = disrv[1] - dataset.lm[1];
+                                    disrd[2] = disrv[2] - dataset.lm[2];
+                                    disrd[3] = disrv[3] - 1;
+
+                                    lmMSE += (disrd[0] * disrd[0] + disrd[1] * disrd[1] + disrd[2] * disrd[2]) / 3;
+
+                                    if (disrv[3] <= 0) {
+                                        realRate += 0.5;
+                                    }
+
+                                    Pair<Pair<double[][][], double[]>, double[][]> disrrd = disr.apply(disrd);
+
+                                    return new Outcome(realRate, mfMSE, lmMSE, null, disrrd.getRight(), disfdd.getRight());
+                                } else {
+                                    double[] disfd = new double[4];
+                                    disfd[0] = (disfv[0] - joint[23]);
+                                    disfd[1] = (disfv[1] - joint[24]);
+                                    disfd[2] = (disfv[2] - joint[25]);
+                                    disfd[3] = -2;// disfv[3] - 1;
+                                    double[][][] deltaObj = disf.apply(disfd).getLeft().getLeft();
+                                    Pair<double[], double[][]> gend = gens.apply(deltaObj);
+
+                                    Result<Pair<Pair<double[][][], double[]>, double[][]>, double[]> disr = dis.result(Pair.of(dataset.dataset, dataset.mf), disValues);
+                                    double[] disrv = disr.value();
+                                    double[] disrd = new double[4];
+                                    disrd[0] = disrv[0] - dataset.lm[0];
+                                    disrd[1] = disrv[1] - dataset.lm[1];
+                                    disrd[2] = disrv[2] - dataset.lm[2];
+                                    disrd[3] = disrv[3] - 1;
+
+                                    lmMSE += (disrd[0] * disrd[0] + disrd[1] * disrd[1] + disrd[2] * disrd[2]) / 3;
+
+                                    if (disrv[3] <= 0) {
+                                        realRate += 0.5;
+                                    }
+                                    Pair<Pair<double[][][], double[]>, double[][]> disrrd = disr.apply(disrd);
+
+                                    return new Outcome(realRate, mfMSE, lmMSE, gend.getRight(), disrrd.getRight(), null);
                                 }
-
-                                double[] disfd = new double[4];
-                                disfd[0] = disfv[0] - joint[23];
-                                disfd[1] = disfv[1] - joint[24];
-                                disfd[2] = disfv[2] - joint[25];
-                                disfd[3] = -2;// disfv[3] - 1;
-
-                                start = System.currentTimeMillis();
-                                double[][][] deltaObj = disf.apply(disfd).getLeft().getLeft();
-                                finish = System.currentTimeMillis();
-                                // System.err.println("DIS' time = " + (finish - start));
-
-                                disfd[0] /= Math.sqrt(2);
-                                disfd[1] /= Math.sqrt(2);
-                                disfd[2] /= Math.sqrt(2);
-                                disfd[3] = disfv[3] + 1;
-
-                                start = System.currentTimeMillis();
-                                Pair<Pair<double[][][], double[]>, double[][]> disfdd = disf.apply(disfd);
-                                finish = System.currentTimeMillis();
-                                // System.err.println("DIS' time = " + (finish - start));
-
-                                start = System.currentTimeMillis();
-                                Pair<double[], double[][]> gend = gens.apply(deltaObj);
-                                finish = System.currentTimeMillis();
-                                // System.err.println("GEN' time = " + (finish - start));
-
-                                start = System.currentTimeMillis();
-                                Result<Pair<Pair<double[][][], double[]>, double[][]>, double[]> disr = dis.result(Pair.of(dataset.dataset, dataset.mf), disValues);
-                                finish = System.currentTimeMillis();
-                                // System.err.println("DIS time = " + (finish - start));
-
-                                double[] disrv = disr.value();
-                                double[] disrd = new double[4];
-
-                                disrd[0] = disrv[0] - dataset.lm[0];
-                                disrd[1] = disrv[1] - dataset.lm[1];
-                                disrd[2] = disrv[2] - dataset.lm[2];
-                                disrd[3] = disrv[3] - 1;
-
-                                if (disrv[3] <= 0) {
-                                    realRate += 0.5;
-                                }
-                                lmMSE += (disrd[0] * disrd[0] + disrd[1] * disrd[1] + disrd[2] * disrd[2]) / 3;
-
-                                start = System.currentTimeMillis();
-                                Pair<Pair<double[][][], double[]>, double[][]> disrrd = disr.apply(disrd);
-                                finish = System.currentTimeMillis();
-                                // System.err.println("DIS' time = " + (finish - start));
-
-                                return new Outcome(realRate, mfMSE, lmMSE, gend.getRight(), disrrd.getRight(), disfdd.getRight());
                             }
                         }));
                     }
@@ -330,6 +323,6 @@ public class TestNN {
     }
 
     public static void main(String[] args) throws IOException, InterruptedException, ExecutionException {
-        new TestNN().run();
+        new TestAGAN().run();
     }
 }

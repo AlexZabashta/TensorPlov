@@ -45,7 +45,7 @@ public class DisDecoder extends VectorDiffStruct {
         {
             int xp = 25, yp = 50;
             for (int i = 0; i < 25; i++, xp++) {
-                f[yp++] += max(0.001 * f[xp], f[xp]);
+                f[yp++] += max(0.01 * f[xp], f[xp]);
             }
         }
         {
@@ -158,7 +158,7 @@ public class DisDecoder extends VectorDiffStruct {
         {
             int xp = 25, yp = 50, dxp = 61, dyp = 36;
             for (int i = 0; i < 25; i++, xp++, yp++) {
-                b[dxp++] += b[dyp++] * ((f[xp] < 0) ? 0.001 : 1);
+                b[dxp++] += b[dyp++] * ((f[xp] < 0) ? 0.01 : 1);
             }
         }
         {

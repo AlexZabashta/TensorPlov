@@ -82,11 +82,11 @@ public class Builder {
         return new Concat(h, c);
     }
 
-    public static Node decLstmLayer(MemoryManager mem, int size) {
+    public static Node decLstmLayer(MemoryManager mem, int prefix, int size) {
         Tanh tanh = new Tanh();
         Sigmoid sigmoid = new Sigmoid();
 
-        Variable h = new Variable("x", 0, size + 4);
+        Variable h = new Variable("x", 0, prefix + size);
         Variable c = new Variable("x", h.to, h.to + size);
 
         Node s = fullConnectedLayer(mem, h, size, tanh);

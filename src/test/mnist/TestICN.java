@@ -23,7 +23,9 @@ import core.Pipe;
 import core.Result;
 import dataset.Convolution;
 import dataset.ImgConvolution;
+import dataset.UnPac;
 import grad.MAdaGrad;
+import test.DataReader;
 
 public class TestICN extends JFrame {
 
@@ -152,14 +154,17 @@ public class TestICN extends JFrame {
 
             LSTM hvFold = new LSTM();
 
-            Convolution convolution = new ImgConvolution(28, 28, hvFold, hvFold);
+            Convolution convolution = new ImgConvolution(28, 28, 1, 1, hvFold, hvFold);
 
             Encoder encoder = new Encoder();
             Decoder decoder = new Decoder();
 
             MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(encoder, 28, 28));
             MultiVarDiffStruct<double[], double[]> mdecoder = MultiVarDiffStruct.convert(decoder);
-            Pipe<double[][][], ?, double[]> net = Pipe.of(pencoder, convolution, mdecoder);
+
+            MultiVarDiffStruct<double[][][], double[]> unpac = MultiVarDiffStruct.convertFun(new UnPac(hvFold.ySize));
+
+            MultiVarDiffStruct<double[][][], double[]> net = Pipe.of(pencoder, convolution, unpac, mdecoder);
 
             double[][] var = net.genBoundVars();
 

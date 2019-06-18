@@ -25,6 +25,7 @@ import core.Result;
 import core.WrapVector;
 import dataset.Convolution;
 import dataset.SymConvolution;
+import dataset.UnPac;
 import grad.MAdaGrad;
 import test.DataReader;
 import test.Dataset;
@@ -33,7 +34,7 @@ public class TestNN {
 
     // final HVFold hvFold = new HVFold();
     final LSTM hvFold = new LSTM();
-    final Convolution convolution = new SymConvolution(128, 16, hvFold, hvFold);
+    final Convolution convolution = new SymConvolution(128, 16, 1, 1, hvFold, hvFold);
 
     final Encoder encoder = new Encoder();
     final Decoder decoder = new Decoder();
@@ -42,7 +43,9 @@ public class TestNN {
     final MultiVarDiffStruct<double[][][], double[][][]> pencoder = MultiVarDiffStruct.convert(new ParallelVDiffStruct(encoder, 128, 16));
     final MultiVarDiffStruct<double[], double[]> mdecoder = MultiVarDiffStruct.convert(decoder);
 
-    final MultiVarDiffStruct<double[][][], double[]> encov = Pipe.of(pencoder, convolution);
+    MultiVarDiffStruct<double[][][], double[]> unpac = MultiVarDiffStruct.convertFun(new UnPac(hvFold.ySize));
+
+    final MultiVarDiffStruct<double[][][], double[]> encov = Pipe.of(pencoder, convolution, unpac);
 
     final Concat<double[][][], double[]> concat = new Concat<double[][][], double[]>(encov, MultiVarDiffStruct.convertFun(new WrapVector(23)));
 
