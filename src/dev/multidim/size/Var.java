@@ -1,4 +1,4 @@
-package dev.size;
+package dev.multidim.size;
 
 import java.io.IOException;
 import java.util.Map;
